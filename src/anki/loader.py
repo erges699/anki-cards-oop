@@ -4,10 +4,10 @@ from pathlib import Path
 class TextFileLoader():
     def __init__(self, *, file_path="./words.txt"):
         # Преобразуем переданный путь в объект Path
-        self.file_path = Path(file_path)
+        self._file_path = Path(file_path)
 
         # Валидация: путь не должен быть директорией
-        if self.file_path.is_dir():
+        if self._file_path.is_dir():
             raise ValueError(
                 f'Переданный путь {file_path} является директорией, '
                 'а не файлом'
@@ -22,12 +22,12 @@ class TextFileLoader():
             Если файл не существует или пуст, возвращает пустой словарь.
         """
         # Проверяем существование файла
-        if not self.file_path.exists():
+        if not self._file_path.exists():
             return {}
 
         words = {}
         try:
-            with self.file_path.open('r', encoding='utf-8') as f:
+            with self._file_path.open('r', encoding='utf-8') as f:
                 for line in f:
                     line = line.strip()
                     if not line:  # Пропускаем пустые строки
@@ -60,7 +60,7 @@ class TextFileLoader():
             raise ValueError('Параметр `words` должен быть словарём')
 
         try:
-            with self.file_path.open('w', encoding='utf-8') as f:
+            with self._file_path.open('w', encoding='utf-8') as f:
                 for word, translation in words.items():
                     # Записываем в формате "слово,перевод"
                     f.write(f"{word},{translation}\n")
