@@ -3,6 +3,7 @@ from typing import Dict
 
 
 class TextFileLoader:
+    """Для класса `TextFileLoader` разработан докстринг"""
     def __init__(self, *, file_path="./words.txt"):
         self._file_path = Path(file_path)
 
@@ -13,6 +14,13 @@ class TextFileLoader:
             )
 
     def load_words(self) -> Dict[str, str]:
+        """
+        Загружает слова из файла, указанного в file_path.
+
+        Возвращает:
+            dict: Словарь вида {"слово": "перевод"}.
+            Если файл не существует или пуст, возвращает пустой словарь.
+        """
         if not self._file_path.exists():
             return {}
 
@@ -31,6 +39,15 @@ class TextFileLoader:
         return words
 
     def save_words(self, words: Dict[str, str]) -> None:
+        """
+        Сохраняет слова в файл, указанный в file_path.
+
+        Параметры:
+            words (dict): Словарь вида {"слово": "перевод"} для сохранения.
+
+        Исключения:
+            ValueError: Если параметр words не является словарём.
+        """
         if not isinstance(words, dict):
             raise ValueError('Параметр "words" должен быть словарём')
         try:
