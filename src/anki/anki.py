@@ -9,7 +9,7 @@ class Anki:
 
     def __init__(self, *, words=None):
         if words is None:
-            self.words = {}
+            self._words = {}
         else:
             if not isinstance(words, dict):
                 raise ValueError(
@@ -30,7 +30,17 @@ class Anki:
                 normalized_value = self.normalize_word(translation)
                 normalized_words[normalized_key] = normalized_value
 
-            self.words = normalized_words
+            self._words = normalized_words
+
+    def get_words(self):
+        """
+        Возвращает копию словаря слов.
+        
+        Возвращает:
+            dict: Копия словаря вида {"слово": "перевод"}.
+        """
+        import copy
+        return copy.deepcopy(self._words)
 
     def add_word(self, word, translation):
         if not isinstance(word, str):
@@ -43,4 +53,4 @@ class Anki:
                 )
         normalized_word = self.normalize_word(word)
         normalized_translation = self.normalize_word(translation)
-        self.words[normalized_word] = normalized_translation
+        self._words[normalized_word] = normalized_translation

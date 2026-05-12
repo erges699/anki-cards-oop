@@ -4,21 +4,21 @@ from typing import Dict
 
 class TextFileLoader:
     def __init__(self, *, file_path="./words.txt"):
-        self.file_path = Path(file_path)
+        self._file_path = Path(file_path)
 
-        if self.file_path.is_dir():
+        if self._file_path.is_dir():
             raise ValueError(
                 f'Переданный путь {file_path} является директорией, '
                 'а не файлом'
             )
 
     def load_words(self) -> Dict[str, str]:
-        if not self.file_path.exists():
+        if not self._file_path.exists():
             return {}
 
         words = {}
         try:
-            with open(self.file_path, "r", encoding='utf-8') as file:
+            with open(self._file_path, "r", encoding='utf-8') as file:
                 for line in file:
                     line = line.strip()
                     if line.count(',') != 1:
@@ -34,7 +34,7 @@ class TextFileLoader:
         if not isinstance(words, dict):
             raise ValueError('Параметр "words" должен быть словарём')
         try:
-            with open(self.file_path, "w", encoding='utf-8') as output:
+            with open(self._file_path, "w", encoding='utf-8') as output:
                 for word, translation in words.items():
                     # Сохраняем в формате "слово, перевод\n"
                     output.write(f'{word},{translation}\n')
