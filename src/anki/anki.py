@@ -49,6 +49,35 @@ class Anki:
 
             self._words = normalized_words
 
+    def __str__(self):
+        """
+        Возвращает строковое представление объекта Anki.
+
+        Возвращает:
+            str: Информация о количестве слов в словаре.
+        """
+        count = len(self._words)
+        return f"Anki словарь с {count} слов(ами)"
+
+    def __contains__(self, word):
+        """
+        Проверяет, содержится ли слово в словаре.
+
+        Параметры:
+            word (str): Слово для проверки.
+
+        Возвращает:
+            bool: True если слово присутствует в словаре (после нормализации),
+                  False иначе.
+
+        Исключения:
+            ValueError: Если переданный аргумент не является строкой.
+        """
+        if not isinstance(word, str):
+            raise ValueError('Параметр `word` должен быть строкой')
+        normalized_word = self.normalize_word(word)
+        return normalized_word in self._words
+
     def get_words(self) -> Dict[str, str]:
         """
         Возвращает копию словаря слов.
