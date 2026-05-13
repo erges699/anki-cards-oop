@@ -97,4 +97,4 @@ class TextUI:
                 print('\nВыход')
                 break
             else:
-                print('Неизвестный пункт меню')        
+                print('Неизвестный пункт меню')

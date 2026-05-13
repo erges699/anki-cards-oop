@@ -1,16 +1,22 @@
+import json
+
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Any
 
 
-class TextFileLoader:
-    """Для класса `TextFileLoader` разработан докстринг"""
-    def __init__(self, *, file_path="./words.txt"):
+class BaseFileLoader:
+    """Для класса `BaseFileLoader` разработан докстринг"""
+    DEFAULT_FILE_PATH = './words.txt'
+
+    def __init__(self, *, file_path=None):
+        if file_path is None:
+            file_path = self.DEFAULT_FILE_PATH
+
         self._file_path = Path(file_path)
 
-        if self._file_path.is_dir():
+        if self._file_path.exists() and self._file_path.is_dir():
             raise ValueError(
-                f'Переданный путь {file_path} является директорией, '
-                'а не файлом'
+                f'Путь {file_path} является директорией, а должен быть файлом'
             )
 
     def load_words(self) -> Dict[str, str]:
@@ -24,19 +30,8 @@ class TextFileLoader:
         if not self._file_path.exists():
             return {}
 
-        words = {}
-        try:
-            with open(self._file_path, "r", encoding='utf-8') as file:
-                for line in file:
-                    line = line.strip()
-                    if line.count(',') != 1:
-                        continue
-                    word, description = line.split(',', 1)
-                    words[word.strip()] = description.strip()
-        except (IOError, OSError):
-            return {}
-
-        return words
+        with self._file_path.open("r", encoding="utf-8") as f:
+            return self._load_from_file(f)
 
     def save_words(self, words: Dict[str, str]) -> None:
         """
@@ -49,15 +44,104 @@ class TextFileLoader:
             ValueError: Если параметр words не является словарём.
         """
         if not isinstance(words, dict):
-            raise ValueError('Параметр "words" должен быть словарём')
-        try:
-            with open(self._file_path, "w", encoding='utf-8') as output:
-                for word, translation in words.items():
-                    # Сохраняем в формате "слово, перевод\n"
-                    output.write(f'{word},{translation}\n')
-        except (IOError, OSError) as e:
-            # Пробрасываем исключение дальше
-            raise e
+            raise ValueError("Значением параметра `words` должен быть словарь")
 
-        # count, word_form = make_word_form(words)
-        # print(f'Было сохранено {count} {word_form} в файл {filename}')
+        with self._file_path.open("w", encoding="utf-8") as f:
+            return self._save_to_file(words, f)
+
+    def _load_from_file(self, file_object: Any):
+        """Реализует логику загрузки данных определённого
+        формата из `file_object`.
+
+        Метод должен быть переопределён в наследниках
+
+        Parameters
+        ----------
+        file_object : FileLike
+            FileLike объект, из которого идёт чтение данных
+
+        Returns
+        -------
+        dict
+            Словарь с загруженными словами
+        """
+        raise NotImplementedError
+
+    def _save_to_file(self, words: Dict[str, str], file_object: Any):
+        """Реализует логику сохранения слов в определённом формате в
+        файл `file_object`.
+
+        Метод должен быть переопределён в наследниках
+
+        Parameters
+        ----------
+        words : dict
+            Словарь с словами и переводами
+        file_object : FileLike
+            FileLike объект, из которого идёт чтение данных
+
+        Returns
+        -------
+        None
+        """
+        raise NotImplementedError
+
+
+class TextFileLoader(BaseFileLoader):
+    """
+    Реализует логику загрузки слов из текстового файла и логику сохранения
+    слов в текстовый файл.
+
+    Формат записи: "слово,перевод"
+    """
+    DEFAULT_FILE_PATH = "./words.txt"
+
+    def _load_from_file(self, file_object):
+        words = {}
+        for line in file_object:
+            word, translation = line.split(",")
+            words[word.strip()] = translation.strip()
+        return words
+
+    def _save_to_file(self, words, file_object):
+        for word, translation in words.items():
+            file_object.write(f'{word},{translation}\n')
+
+
+class TSVFileLoader(BaseFileLoader):
+    """
+    Реализует логику загрузки слов из TSV  файла и логику сохранения
+    слов в TSV файл.
+
+    Формат записи: "слово\tперевод"
+    """
+
+    DEFAULT_FILE_PATH = "./words.tsv"
+
+    def _load_from_file(self, file_object):
+        words = {}
+        for line in file_object:
+            word, translation = line.split("\t")
+            words[word.strip()] = translation.strip()
+        return words
+
+    def _save_to_file(self, words, file_object):
+        for word, translation in words.items():
+            file_object.write(f'{word}\t{translation}\n')
+
+
+class JsonFileLoader(BaseFileLoader):
+    """
+    Реализует логику загрузки слов из JSON файла и логику сохранения
+    слов в JSON файл.
+
+    Формат записи: {"слово": "перевод"}
+    """
+
+    DEFAULT_FILE_PATH = "./words.json"
+
+    def _load_from_file(self, file_object):
+        return json.load(file_object)
+
+    def _save_to_file(self, words, file_object):
+        json.dump(words, file_object, indent=2, ensure_ascii=False)
