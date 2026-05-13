@@ -13,6 +13,8 @@ class Anki:
             self._words = {}
         else:
             self._words = self._normalize_dict(words)
+        self._last_word = None
+        self._training_active = False
 
     def __iter__(self):
         """Возвращает объект типа dict_items"""
@@ -119,8 +121,13 @@ class Anki:
 
         Исключения:
             ValueError: Если new_words не является словарём или содержит
-                       нестроковые значения.
+                       нестроковые значения, или если попытка изменить словарь
+                       во время активной тренировки.
         """
+        if self._training_active:
+            raise ValueError(
+                'Нельзя изменять словарь во время активной тренировки.'
+            )
         if new_words is None:
             self._words = {}
         else:
@@ -159,7 +166,10 @@ class Anki:
         """
         if not self._words:
             raise ValueError('Словарь пуст')
-        return random.choice(list(self._words.keys()))
+        word = random.choice(list(self._words.keys()))
+        self._last_word = word
+        self._training_active = True
+        return word
 
     def check_translation(self, word, translation) -> bool:
         """
@@ -174,8 +184,10 @@ class Anki:
             bool: True если перевод корректен, False если некорректен.
 
         Исключения:
-            ValueError: Если слово отсутствует в словаре или
-                       переданные аргументы не являются строками.
+            ValueError: Если слово отсутствует в словаре,
+                       переданные аргументы не являются строками,
+                       или переданное слово не совпадает с последним
+                       выданным словом при активной тренировке.
         """
         if not isinstance(word, str):
             raise ValueError(
@@ -189,6 +201,19 @@ class Anki:
         if not isinstance(translation, str):
             raise ValueError(
                 f'Значение {translation} должно быть строкой'
+                )
+
+        # Защита от повторной проверки слова
+        if self._training_active:
+            if self._last_word is None:
+                # Не должно происходить, но на всякий случай
+                self._training_active = False
+            elif normalized_word != self.normalize_word(self._last_word):
+                self._training_active = False
+                raise ValueError(
+                    f'Переданное слово "{word}" не совпадает с последним '
+                    f'выданным словом "{self._last_word}". '
+                    'Тренировка завершена.'
                 )
 
         normalized_translation = self.normalize_word(translation)
