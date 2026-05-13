@@ -52,6 +52,14 @@ class Anki:
 
             self._words = normalized_words
 
+    def __iter__(self):
+        """Возвращает объект типа dict_items"""
+        return iter(self._words.items())
+
+    def __len__(self):
+        """Вычисляет количество слов в игре (вызовом len(anki))"""
+        return len(self._words)
+
     def __str__(self):
         """
         Возвращает строковое представление объекта Anki.
