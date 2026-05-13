@@ -26,37 +26,37 @@ def test_integration(temp_file_with_words):
     """Проверяет полный сценарий работы приложения."""
     # 1. Создайте TextFileLoader с временным файлом.
     loader = TextFileLoader(file_path=temp_file_with_words)
-    
+
     # 2. Загрузите слова методом load_words().
     loaded_words = loader.load_words()
     assert loaded_words == {"hello": "привет", "world": "мир"}
-    
+
     # 3. Создайте Anki с загруженными словами.
     anki = Anki(words=loaded_words)
-    
-    # 4. Проверьте, что get_words() возвращает правильные слова.
-    words_from_anki = anki.get_words()
+
+    # 4. Проверьте, что words возвращает правильные слова.
+    words_from_anki = anki.words
     assert words_from_anki == {"hello": "привет", "world": "мир"}
-    
+
     # 5. Добавьте новое слово через add_word().
     anki.add_word("python", "питон")
-    
+
     # Проверяем, что слово добавилось
-    updated_words = anki.get_words()
+    updated_words = anki.words
     expected = {
         "hello": "привет",
         "world": "мир",
         "python": "питон"
     }
     assert updated_words == expected
-    
+
     # 6. Сохраните слова через save_words().
     loader.save_words(updated_words)
-    
+
     # 7. Проверьте, что файл содержит все слова (исходные и новое).
     with open(temp_file_with_words, 'r', encoding='utf-8') as f:
         content = f.read().strip()
-    
+
     lines = content.split('\n')
     assert len(lines) == 3
     assert "hello,привет" in lines

@@ -8,49 +8,11 @@ class Anki:
     """Для класса `Anki` разработан докстринг"""
     app_version = '0.0.1'
 
-    @staticmethod
-    def normalize_word(word: str) -> str:
-        """
-        Нормализует слово: удаляет пробелы по краям и приводит к
-        нижнему регистру.
-
-        Параметры:
-            word (str): Слово для нормализации.
-
-        Возвращает:
-            str: Нормализованная строка.
-
-        Исключения:
-            ValueError: Если переданный аргумент не является строкой.
-        """
-        if not isinstance(word, str):
-            raise ValueError(f'Слово {word} должно быть строкой')
-        return word.strip().lower()
-
     def __init__(self, *, words=None):
         if words is None:
             self._words = {}
         else:
-            if not isinstance(words, dict):
-                raise ValueError(
-                    'Значение параметра "words" должно быть словарём'
-                    )
-            normalized_words = {}
-            for word, translation in words.items():
-                if not isinstance(word, str):
-                    raise ValueError(
-                        f'Значение {word} должно быть строкой'
-                        )
-                if not isinstance(translation, str):
-                    raise ValueError(
-                        f'Значение {translation} должно быть строкой'
-                        )
-
-                normalized_key = self.normalize_word(word)
-                normalized_value = self.normalize_word(translation)
-                normalized_words[normalized_key] = normalized_value
-
-            self._words = normalized_words
+            self._words = self._normalize_dict(words)
 
     def __iter__(self):
         """Возвращает объект типа dict_items"""
@@ -89,7 +51,56 @@ class Anki:
         normalized_word = self.normalize_word(word)
         return normalized_word in self._words
 
-    def get_words(self) -> Dict[str, str]:
+    @staticmethod
+    def normalize_word(word: str) -> str:
+        """
+        Нормализует слово: удаляет пробелы по краям и приводит к
+        нижнему регистру.
+
+        Параметры:
+            word (str): Слово для нормализации.
+
+        Возвращает:
+            str: Нормализованная строка.
+
+        Исключения:
+            ValueError: Если переданный аргумент не является строкой.
+        """
+        if not isinstance(word, str):
+            raise ValueError(f'Слово {word} должно быть строкой')
+        return word.strip().lower()
+
+    def _normalize_dict(self, words: dict) -> dict:
+        """
+        Принимает словарь и возвращает нормализованный словарь.
+        Валидирует, что keys и values являются строками, нормализует их.
+
+        Параметры:
+            words (dict): Словарь для нормализации.
+
+        Возвращает:
+            dict: Нормализованный словарь.
+
+        Исключения:
+            ValueError: Если words не является словарём или содержит
+                       нестроковые значения.
+        """
+        if not isinstance(words, dict):
+            raise ValueError('Значение параметра "words" должно быть словарём')
+        normalized_words = {}
+        for word, translation in words.items():
+            if not isinstance(word, str):
+                raise ValueError(f'Значение {word} должно быть строкой')
+            if not isinstance(translation, str):
+                raise ValueError(f'Значение {translation} должно быть строкой')
+
+            normalized_key = self.normalize_word(word)
+            normalized_value = self.normalize_word(translation)
+            normalized_words[normalized_key] = normalized_value
+        return normalized_words
+
+    @property
+    def words(self) -> Dict[str, str]:
         """
         Возвращает копию словаря слов.
 
@@ -97,6 +108,23 @@ class Anki:
             dict: Копия словаря вида {"слово": "перевод"}.
         """
         return copy.deepcopy(self._words)
+
+    @words.setter
+    def words(self, new_words: dict) -> None:
+        """
+        Устанавливает новый словарь слов, выполняя валидацию и нормализацию.
+
+        Параметры:
+            new_words (dict): Новый словарь для установки.
+
+        Исключения:
+            ValueError: Если new_words не является словарём или содержит
+                       нестроковые значения.
+        """
+        if new_words is None:
+            self._words = {}
+        else:
+            self._words = self._normalize_dict(new_words)
 
     def add_word(self, word, translation):
         """
