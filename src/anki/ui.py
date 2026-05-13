@@ -67,19 +67,18 @@ class TextUI:
         """
         Выводит все слова из словаря.
         """
-        words = self._anki_game.get_words()
-        if not words:
-            print("\nСловарь пуст.")
+        if len(self._anki_game) == 0:
+            print("Словарь пуст.")
             return
 
-        print("\nСловарь:")
-        for word, translation in words.items():
+        for word, translation in self._anki_game:
             print(f"{word} - {translation}")
 
     def main_loop(self):
         """
         Запускает главный цикл программы.
         """
+        print(f'Общее количество слов: {len(self._anki_game)}')
         while True:
             print(self.MENU)
             menu_choice = input('Пункт меню: ')

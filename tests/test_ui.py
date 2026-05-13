@@ -161,10 +161,14 @@ def test_TextUI_class_add_words_method(ui_cls, monkeypatch, capsys):
 
 
 def test_TextUI_class_show_words_method(ui_cls, monkeypatch, capsys):
-    """Проверяет метод `show_words` на предмент выполнения условий: вывода слов в формате "слово - перевод" и использование методов класса `Anki`"""
-    anki_mock = Mock()
-    anki_mock.get_words.return_value = {"hello": "привет", "world": "мир", "python": "питон"}
-
+    """Проверяет метод `show_words` на предмет выполнения условий: вывода слов в формате "слово - перевод" и использование методов класса `Anki`"""
+    words_dict = {"hello": "привет", "world": "мир", "python": "питон"}
+    
+    from unittest.mock import MagicMock
+    anki_mock = MagicMock()
+    anki_mock.__len__.return_value = 3
+    anki_mock.__iter__.return_value = iter(words_dict.items())
+    
     ui = ui_cls(anki_mock)
 
     ui.show_words()
@@ -176,12 +180,9 @@ def test_TextUI_class_show_words_method(ui_cls, monkeypatch, capsys):
         " в стандартный поток вывода, в формате \"слово - перевод\""
     )
 
-    try:
-        anki_mock.get_words.assert_called()
-    except AssertionError:
-        assert False, (
-        "Метод `show_words` должен использовать методы экземпляра класса `Anki` для получения слов"
-    )
+    # Проверяем, что использовались магические методы
+    anki_mock.__len__.assert_called()
+    anki_mock.__iter__.assert_called()
 
 
 def test_TextUI_class_main_loop_method_shows_menu(ui_cls, anki_instance, monkeypatch, capsys):
