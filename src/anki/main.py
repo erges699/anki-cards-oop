@@ -3,49 +3,26 @@ import pathlib
 import sys
 
 from anki.anki import Anki
-from anki.loader import TextFileLoader, TSVFileLoader, JsonFileLoader
-from anki.loaders import JsonNetworkLoader
+from anki.loader import loader_registry
 from anki.ui import TextUI
 
 
 def get_loader(source):
-    """Выбирает реализацию загрузчика в зависимости от `source`.
-
-    Parameters
-    ----------
-    source : str
-        Источник для получения слов: путь к файлу (.txt, .tsv, .json)
-        или URL (http/https) для загрузки JSON.
-
-    Returns
-    -------
-    Any
-        Класс загрузчика
-
-    Raises
-    ------
-    ValueError
-        Если источник не поддерживается.
     """
-    # Если источник — URL, используем JsonNetworkLoader
-    if source.startswith(('http://', 'https://')):
-        return JsonNetworkLoader(url=source)
+    Автоматические выбирает конкретную реализацию загрузчика,
+    в зависимости от `source`.
+    """
 
-    # Иначе определяем по расширению файла
-    loaders = {
-        ".txt": TextFileLoader,
-        ".tsv": TSVFileLoader,
-        ".json": JsonFileLoader
-    }
+    if source.startswith("http"):
+        identity = "http"
+        args = {"url": source}
+    else:
+        identity = pathlib.Path(source).suffix
+        args = {"file_path": source}
 
-    file_path = pathlib.Path(source)
+    loader_cls = loader_registry.get_loader(identity)
 
-    try:
-        # suffix возвращает расширение файла
-        loader = loaders[file_path.suffix]
-        return loader(file_path=str(file_path))
-    except KeyError:
-        raise ValueError(f"Неизвестный тип источника слов: {source}")
+    return loader_cls(**args)
 
 
 def main():

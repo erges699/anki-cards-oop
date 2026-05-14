@@ -17,7 +17,8 @@ class JsonNetworkLoader:
         """
         if not url.startswith(('http://', 'https://')):
             raise ValueError(
-                f'URL должен начинаться с http:// или https://, получено: {url}'
+                'URL должен начинаться с http:// или https://, '
+                f'получено: {url}'
             )
         self.url = url
 

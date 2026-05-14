@@ -1,6 +1,0 @@
-кот,cat
-дом,house
-город,city
-стол,table
-стул,chair
-собака,dog
