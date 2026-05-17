@@ -7,15 +7,15 @@ class TextFileLoader:
         file_path = Path(file_path)
         if file_path.is_dir():
             raise ValueError('Значение "file_path" не должно быть директорией')
-        self.file_path = file_path
+        self._file_path = file_path
 
     def load_words(self):
         """загрузка слов из текстового файла"""
-        if not self.file_path.exists():
+        if not self._file_path.exists():
             return {}
         words = {}
         try:
-            with self.file_path.open("r", encoding="utf-8") as f:
+            with self._file_path.open("r", encoding="utf-8") as f:
                 lines = f.readlines()
                 for line in lines:
                     line = line.strip()
@@ -25,7 +25,7 @@ class TextFileLoader:
                     if line.count(',') != 1:
                         continue
                     word, translation = line.split(',', 1)
-                    words[word.strip()] = translation.strip()                
+                    words[word.strip()] = translation.strip()
         except FileNotFoundError:
             return {}
 
@@ -36,7 +36,7 @@ class TextFileLoader:
         if not isinstance(words, dict):
             raise ValueError('Параметр `words` должен быть словарём')
         try:
-            with self.file_path.open("w", encoding="utf-8") as f:
+            with self._file_path.open("w", encoding="utf-8") as f:
                 for word, translation in words.items():
                     f.write(f"{word},{translation}\n")
         except (IOError, OSError):
