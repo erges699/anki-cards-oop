@@ -1,14 +1,17 @@
 import csv
 import random
+
 import sys
 import time
+from pathlib import Path
 from typing import Dict, Tuple
 
 
 STOP_WORD = 'СТОП'
+BASE_DIR = Path(__file__).parent
 
 
-def load_words(filename: str = 'words.txt') -> Dict[str, str]:
+def load_words(filename: Path = BASE_DIR / 'words.txt') -> Dict[str, str]:
     """
     Загружает пары слов («слово, перевод») из текстового файла
     и возвращает словарь.
@@ -207,7 +210,7 @@ def show_all_words(words: Dict[str, str]) -> None:
     print(output)
 
 
-def save_words(words: Dict[str, str], filename: str) -> None:
+def save_words(words: Dict[str, str], filename: Path) -> None:
     """
     Сохраняет словарь в файл.
 
@@ -249,7 +252,7 @@ def main() -> None:
     предоставляет меню выбора режимов и обеспечивает взаимодействие
     с пользователем.
     """
-    filename = 'words.txt'
+    filename = BASE_DIR / 'words.txt'
     words = load_words()
     count = len(words)
     last_digit = count % 10
