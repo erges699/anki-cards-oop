@@ -2,7 +2,40 @@ import textwrap
 
 
 class TextUI:
-    """пользовательский интерфейс"""
+    """
+    Текстовый пользовательский интерфейс для взаимодействия с игрой Anki.
+
+    Класс предоставляет меню для выполнения основных операций: начало игры,
+    добавление слов, вывод всех слов и выход. Взаимодействие происходит через
+    консоль.
+
+    Parameters
+    ----------
+    anki : Anki
+        Экземпляр класса Anki, с которым будет работать интерфейс.
+
+    Raises
+    ------
+    ValueError
+        Если переданный аргумент `anki` равен None.
+
+    Attributes
+    ----------
+    STOP_WORD : str
+        Ключевое слово для завершения ввода в интерактивных режимах.
+    MENU : str
+        Текст главного меню с доступными опциями.
+
+    Examples
+    --------
+    >>> from anki import Anki
+    >>> anki = Anki()
+    >>> ui = TextUI(anki)
+    >>> # Запуск основного цикла
+    >>> # ui.main_loop()
+    """
+    STOP_WORD = "стоп"
+
     MENU = textwrap.dedent("""\
         Меню:
         1. Начать игру
@@ -12,5 +45,134 @@ class TextUI:
         5. Выход
         """).strip()
 
-    def __init__(self):
-        pass
+    def __init__(self, anki):
+        """
+        Инициализирует текстовый интерфейс с экземпляром игры Anki.
+
+        Parameters
+        ----------
+        anki : Anki
+            Экземпляр класса Anki, с которым будет работать интерфейс.
+
+        Raises
+        ------
+        ValueError
+            Если переданный аргумент `anki` равен None.
+        """
+        if anki is None:
+            raise ValueError("anki не может быть None")
+        self._anki_game = anki
+
+    def start_game(self):
+        """
+        Запускает интерактивную игру на проверку знаний.
+
+        В цикле случайно выбирается слово из словаря, пользователь вводит
+        перевод. Если перевод верный, выводится подтверждение, иначе
+        показывается правильный ответ. Игра продолжается до ввода
+        стоп-слова (значение `STOP_WORD`) или пока словарь не станет пустым.
+
+        Raises
+        ------
+        ValueError
+            Косвенно, если словарь пуст и вызывается `get_random_word()`.
+
+        Notes
+        -----
+        Для завершения игры введите стоп-слово «стоп».
+        """
+        print(f'Для завершения игры введите "{self.STOP_WORD}"')
+        while True:
+            try:
+                word = self._anki_game.get_random_word()
+            except ValueError:
+                print('Словарь пуст. Добавьте слова для начала игры.')
+                break
+            print(f"\nСлово: {word}")
+            user_input = input("Введите перевод: ").strip()
+            if user_input.lower() == self.STOP_WORD:
+                break
+            if self._anki_game.check_translation(word, user_input):
+                print('Правильно')
+            else:
+                correct = self._anki_game.get_translation(word)
+                print(f'Неправильно. Правильный перевод: {correct}')
+
+    def add_words(self):
+        """
+        Режим добавления новых слов в словарь.
+
+        В цикле запрашивает у пользователя слово и его перевод.
+        Добавление происходит через метод `add_word` экземпляра Anki.
+        При некорректном вводе (не строки) выводится сообщение об ошибке.
+        Цикл прерывается вводом стоп-слова (значение `STOP_WORD`).
+
+        Raises
+        ------
+        ValueError
+            Косвенно, если `add_word` вызывает исключение (например,
+            нестроковые аргументы).
+
+        Notes
+        -----
+        Для завершения ввода введите стоп-слово «стоп».
+        """
+        print(f'Для завершения ввода введите "{self.STOP_WORD}"')
+        while True:
+            word = input('Введите слово: ').strip()
+            if word.lower() == self.STOP_WORD:
+                break
+            translation = input('Введите перевод: ').strip()
+            try:
+                self._anki_game.add_word(word, translation)
+                print(f'Слово "{word}" с переводом "{translation}" добавлено.')
+            except ValueError as e:
+                print(f'Ошибка: {e}')
+
+    def show_words(self):
+        """
+        Выводит все слова и их переводы из словаря.
+
+        Если словарь пуст, выводится только заголовок «Словарь:».
+        """
+        words = self._anki_game.get_words()
+        if not words:
+            print('Словарь:')
+            return
+
+        for word, translation in words.items():
+            print(f'{word} - {translation}')
+
+    def main_loop(self):
+        """
+        Основной цикл интерфейса, отображающий меню и обрабатывающий выбор.
+
+        Бесконечно выводит меню и ожидает ввод номера команды.
+        В зависимости от вызова выполняет соответствующий метод:
+        - 1: `start_game`
+        - 2: `add_words`
+        - 3: `show_words`
+        - 4: заглушка (функциональность не реализована)
+        - 5: выход из программы
+
+        Notes
+        -----
+        Меню содержит пять пунктов, описанных в атрибуте `MENU`.
+        """
+        while True:
+            print(self.MENU)
+            choice = input("> ").strip()
+
+            if choice == "1":
+                self.start_game()
+            elif choice == "2":
+                self.add_words()
+            elif choice == "3":
+                self.show_words()
+            elif choice == "4":
+                print("\nДанная функциональность ещё не реализована")
+            elif choice == "5":
+                print("\nВыход из программы.")
+                break
+            else:
+                print("\nНеверный выбор. Пожалуйста, введите число от 1 до 5.")

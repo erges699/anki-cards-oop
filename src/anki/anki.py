@@ -203,3 +203,102 @@ class Anki:
         """
         import copy
         return copy.deepcopy(self._words)
+
+    def get_random_word(self):
+        """
+        Возвращает случайное слово из словаря.
+
+        Returns
+        -------
+        str
+            Случайное слово.
+
+        Raises
+        ------
+        ValueError
+            Если словарь пуст.
+
+        Examples
+        --------
+        >>> anki = Anki(words={"Cat": "Кошка"})
+        >>> word = anki.get_random_word()
+        >>> word in anki
+        True
+        """
+        if not self._words:
+            raise ValueError('Словарь пуст')
+        import random
+        return random.choice(list(self._words.keys()))
+
+    def check_translation(self, word, translation):
+        """
+        Проверяет, является ли перевод правильным.
+
+        Parameters
+        ----------
+        word : str
+            Слово, для которого нужно проверить перевод.
+        translation : str
+            Перевод слова.
+
+        Returns
+        -------
+        bool
+            True, если перевод правильный, иначе False.
+
+        Raises
+        ------
+        ValueError
+            Если `word` или `translation` не являются строками.
+            Если слово отсутствует в словаре.
+
+        Examples
+        --------
+        >>> anki = Anki(words={"Cat": "Кошка"})
+        >>> anki.check_translation("Cat", "Кошка")
+        True
+        >>> anki.check_translation("Cat", "Собака")
+        False
+        """
+        if not isinstance(word, str):
+            raise ValueError('Слово должно быть строкой')
+        if not isinstance(translation, str):
+            raise ValueError('Перевод должен быть строкой')
+        normalized_word = self.normalize_word(word)
+        if normalized_word not in self._words:
+            raise ValueError('Слово отсутствует в словаре')
+        normalized_translation = self.normalize_word(translation)
+        return self._words[normalized_word] == normalized_translation
+
+    def get_translation(self, word):
+        """
+        Возвращает перевод слова.
+
+        Parameters
+        ----------
+        word : str
+            Слово, для которого нужно получить перевод.
+
+        Returns
+        -------
+        str
+            Перевод слова.
+
+        Raises
+        ------
+        ValueError
+            Если `word` не является строкой.
+            Если слово отсутствует в словаре.
+
+        Examples
+        --------
+        >>> anki = Anki(words={"Cat": "Кошка"})
+        >>> anki.get_translation("Cat")
+        'Кошка'
+        """
+        if not isinstance(word, str):
+            raise ValueError('Слово должно быть строкой')
+        normalized_word = self.normalize_word(word)
+        if normalized_word not in self._words:
+            raise ValueError('Слово отсутствует в словаре')
+        return self._words[normalized_word]
