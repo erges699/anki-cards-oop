@@ -50,6 +50,68 @@ class Anki:
                 normalized_words[normalize_word] = normalize_translation
             self._words = normalized_words
 
+    def __contains__(self, word):
+        """
+        Проверяет, содержится ли слово в словаре.
+
+        Слово нормализуется (приводится к нижнему регистру и обрезаются
+        пробелы) перед проверкой. Это позволяет искать слова без учёта
+        регистра и лишних пробелов.
+
+        Parameters
+        ----------
+        word : str
+            Слово для проверки наличия в словаре.
+
+        Returns
+        -------
+        bool
+            True, если нормализованное слово присутствует в словаре,
+            иначе False.
+
+        Raises
+        ------
+        ValueError
+            Если `word` не является строкой.
+
+        Examples
+        --------
+        >>> anki = Anki(words={"apple": "яблоко"})
+        >>> "apple" in anki
+        True
+        >>> "Apple" in anki
+        True
+        >>> "banana" in anki
+        False
+        """
+        if not isinstance(word, str):
+            raise ValueError('Параметр `word` должен быть строкой')
+        normalized_word = self.normalize_word(word)
+        return normalized_word in self._words
+
+    def __str__(self):
+        """
+        Возвращает строковое представление объекта Anki.
+
+        Представление включает количество слов в словаре.
+
+        Returns
+        -------
+        str
+            Строка в формате "Anki словарь с X слов(ами)".
+
+        Examples
+        --------
+        >>> anki = Anki()
+        >>> str(anki)
+        'Anki словарь с 0 слов(ами)'
+        >>> anki.add_word("hello", "привет")
+        >>> str(anki)
+        'Anki словарь с 1 слов(ами)'
+        """
+        count = len(self._words)
+        return f'Anki словарь с {count} слов(ами)'
+
     @staticmethod
     def normalize_word(word):
         """
