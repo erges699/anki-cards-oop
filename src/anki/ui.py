@@ -135,12 +135,9 @@ class TextUI:
 
         Если словарь пуст, выводится только заголовок «Словарь:».
         """
-        words = self._anki_game.get_words()
-        if not words:
-            print('Словарь:')
-            return
+        print(f'Словарь: {len(self._anki_game)}')
 
-        for word, translation in words.items():
+        for word, translation in self._anki_game:
             print(f'{word} - {translation}')
 
     def main_loop(self):

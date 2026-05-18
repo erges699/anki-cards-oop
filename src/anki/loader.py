@@ -1,4 +1,5 @@
 import json
+import requests
 
 from pathlib import Path
 
@@ -407,3 +408,90 @@ class JsonFileLoader(BaseFileLoader):
         (ensure_ascii=False).
         """
         json.dump(words, file_object, indent=2, ensure_ascii=False)
+
+
+class JsonNetworkLoader():
+    """
+    Загрузчик для JSON-файлов.
+
+    Реализует логику загрузки слов из JSON-файла и сохранения
+    слов в JSON-файл.
+
+    Parameters
+    ----------
+    url : str or Path, optional
+    """
+
+    def __init__(self, url: str):
+        """
+        Инициализатор класса JsonNetworkLoader.
+
+        Параметры:
+            url (str): URL JSON-файла со словами.
+        """
+        if not url.startswith(('http://', 'https://')):
+            raise ValueError(
+                f'URL должен начинаться с http:// или https://, получено:'
+                f'{url}'
+            )
+        self.url = url
+
+    def load_words(self):
+        """
+        Загружает слова по ссылке из атрибута url.
+        Поддерживает JSON-формат и текстовый CSV-формат (слово,перевод).
+
+        Возвращает:
+            dict: Словарь вида {"слово": "перевод"}.
+                  Если ответ не является словарём или произошла ошибка сети,
+                  возвращает пустой словарь.
+        """
+        try:
+            response = requests.get(self.url)
+            response.raise_for_status()
+            # Пробуем разобрать как JSON
+            try:
+                words = response.json()
+                if not isinstance(words, dict):
+                    # Если структура не словарь, возвращаем пустой словарь
+                    return {}
+                result = {}
+                for key, value in words.items():
+                    result[str(key)] = str(value)
+                return result
+            except json.JSONDecodeError:
+                # Если не JSON, пробуем текстовый формат (CSV)
+                data = response.text
+                lines = data.strip().splitlines()
+                result = {}
+                for i, line in enumerate(lines):
+                    line = line.strip()
+                    if not line:
+                        continue
+                    # Пропускаем заголовок, если он есть
+                    if i == 0 and line.lower() in (
+                        'слово,перевод',
+                        'word,translation'
+                    ):
+                        continue
+                    if ',' not in line:
+                        continue
+                    parts = line.split(',', 1)
+                    if len(parts) != 2:
+                        continue
+                    word, translation = parts
+                    result[word.strip()] = translation.strip()
+                return result
+        except (requests.RequestException, ValueError):
+            # В случае ошибки сети возвращаем пустой словарь
+            return {}
+
+    def save_words(self, words):
+        """
+        Метод-заглушка, который ничего не делает.
+        Сохранение на удалённый URL не поддерживается.
+
+        Параметры:
+            words (dict): Словарь вида {"слово": "перевод"} для сохранения.
+        """
+        pass
