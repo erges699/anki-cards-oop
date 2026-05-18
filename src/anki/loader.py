@@ -1,7 +1,18 @@
 from pathlib import Path
 
 
-class TextFileLoader:
+class BaseFileLoader:
+
+    def __init__(self, *, file_path='./words.txt'):
+        self._file_path = Path(file_path)
+
+        if self._file_path.exists() and self._file_path.is_dir():
+            raise ValueError(
+                f'Путь {file_path} является директорией, а должен быть файлом'
+            )
+
+
+class TextFileLoader(BaseFileLoader):
     """
     Загрузчик и сохранение слов из/в текстовый файл.
 
@@ -28,11 +39,6 @@ class TextFileLoader:
     >>> loader = TextFileLoader(file_path="custom_words.txt")
     >>> loader.save_words({"hello": "привет"})
     """
-    def __init__(self, *, file_path="./words.txt"):
-        file_path = Path(file_path)
-        if file_path.is_dir():
-            raise ValueError('Значение "file_path" не должно быть директорией')
-        self._file_path = file_path
 
     def load_words(self):
         """
@@ -110,3 +116,52 @@ class TextFileLoader:
                     f.write(f"{word},{translation}\n")
         except (IOError, OSError):
             raise ValueError('Не удалось сохранить слова')
+
+
+class TSVFileLoader(BaseFileLoader):
+    """
+    Реализует загрузку слов из TSV-файла и логику сохранения
+    слов в TSV файл
+    """
+
+    def __init__(self, *, file_path="./words.tsv"):
+        self._file_path = Path(file_path)
+
+        if self._file_path.exists() and self._file_path.is_dir():
+            raise ValueError(
+                f"Путь {file_path} является директорией, а должен быть файлом"
+            )
+
+    def load_words(self):
+        """Метод загружает слова из файл по пути `self._file_path`
+
+        Returns
+        -------
+        dict
+            Словарь с загруженными словами
+        """
+        if not self._file_path.exists():
+            return {}
+
+        words = {}
+        with self._file_path.open("r", encoding="utf-8") as f:
+            for line in f:
+                word, translation = line.split("\t")
+                words[word.strip()] = translation.strip()
+
+        return words
+
+    def save_words(self, words):
+        """Метод сохраняет слова в параметре `words` по пути `self._file_path`.
+
+        Raises
+        ------
+        ValueError
+            Если в функцию передаётся не словарь.
+        """
+        if not isinstance(words, dict):
+            raise ValueError("Значением параметра `words` должен быть словарь")
+
+        with self._file_path.open("w", encoding="utf-8") as f:
+            for word, translation in words.items():
+                f.write(f'{word}\t{translation}\n')
