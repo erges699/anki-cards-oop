@@ -98,6 +98,11 @@ class TextUI:
                 correct = self._anki_game.get_translation(word)
                 print(f'Неправильно. Правильный перевод: {correct}')
 
+    def train_until_mistake(self):
+        """
+        Запускает интерактивную игру на проверку знаний до первой ошибки.
+        """
+
     def add_words(self):
         """
         Режим добавления новых слов в словарь.
@@ -167,7 +172,8 @@ class TextUI:
             elif choice == "3":
                 self.show_words()
             elif choice == "4":
-                print("\nДанная функциональность ещё не реализована")
+                # print("\nДанная функциональность ещё не реализована")
+                self.train_until_mistake()
             elif choice == "5":
                 print("\nВыход из программы.")
                 break

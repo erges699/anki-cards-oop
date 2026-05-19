@@ -1,3 +1,6 @@
+import time
+
+
 class Anki:
     """
     Основной класс для управления словарём слов и их переводов.
@@ -34,6 +37,18 @@ class Anki:
             self._words = {}
         else:
             self._words = self._normalize_dict(words)
+        # Начата ли сессия тренировки до первой ошибки.
+        self._session_active = False
+        # Время начала тренировки.
+        self._session_start_time = 0.0
+        # Количество правильных ответов.
+        self._session_user_score = 0
+        self._last_word = None
+        # Информация о последней тренировке.
+        self.last_session_stats = {
+            "correct_answers": 0,
+            "total_time": 0.0,
+        }
 
     def __contains__(self, word):
         """
@@ -151,6 +166,30 @@ class Anki:
         """
         return len(self._words)
 
+    def start_session(self):
+        """Начинает новую тренировочную сессию."""
+        if self._session_active:
+            raise RuntimeError("Нельзя начать тренировку, если она уже начата")
+
+        self._session_active = True
+        self._session_start_time = time.time()
+        self._session_user_score = 0
+
+    def end_session(self):
+        """Завершает текущую тренировочную сессию."""
+        if not self._session_active:
+            raise RuntimeError("Нельзя завершить неактивную сессию")
+
+        self.last_session_stats = {
+            "correct_answers": self._session_user_score,
+            "total_time": time.time() - self._session_start_time
+        }
+
+        # Сбрасываем состояние.
+        self._session_active = False
+        self._session_user_score = 0
+        self._session_start_time = 0.0
+
     @staticmethod
     def normalize_word(word):
         """
@@ -200,7 +239,7 @@ class Anki:
             normalize_word = self.normalize_word(word)
             normalize_translation = self.normalize_word(translation)
             normalized_words[normalize_word] = normalize_translation
-        return normalized_words        
+        return normalized_words
 
     def add_word(self, word, translation):
         """
@@ -244,6 +283,10 @@ class Anki:
     @words.setter
     def words(self, new_words):
         """Докстринг сеттер"""
+        if self._session_active:
+            raise ValueError(
+                'Нельзя изменять словарь во время активной тренировки.'
+            )            
         if new_words is None:
             self._words = {}
         else:
@@ -273,7 +316,9 @@ class Anki:
         if not self._words:
             raise ValueError('Словарь пуст')
         import random
-        return random.choice(list(self._words.keys()))
+        word = random.choice(list(self._words.keys()))
+        self._last_word = word
+        return word
 
     def check_translation(self, word, translation):
         """
@@ -313,7 +358,24 @@ class Anki:
         if normalized_word not in self._words:
             raise ValueError('Слово отсутствует в словаре')
         normalized_translation = self.normalize_word(translation)
-        return self._words[normalized_word] == normalized_translation
+        is_correct = self._words[normalized_word] == normalized_translation
+        # Логика сессии.
+        if self._session_active:
+            if is_correct:
+                self._session_user_score += 1
+            if self._last_word is None:
+                # Не должно происходить, но на всякий случай
+                self._session_active = False
+            elif normalized_word != self.normalize_word(self._last_word):
+                self._session_active = False
+                raise ValueError(
+                    f'Переданное слово "{word}" не совпадает с последним '
+                    f'выданным словом "{self._last_word}". '
+                    'Тренировка завершена.'
+                )
+            else:
+                self.end_session()
+        return is_correct
 
     def get_translation(self, word):
         """
