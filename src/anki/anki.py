@@ -33,22 +33,7 @@ class Anki:
         if words is None:
             self._words = {}
         else:
-            if not isinstance(words, dict):
-                raise ValueError(
-                    'Значение параметра "words" должно быть словарём'
-                )
-            normalized_words = {}
-            for word, translation in words.items():
-                if not isinstance(word, str):
-                    raise ValueError('Ключ словаря должен быть строкой')
-
-                if not isinstance(translation, str):
-                    raise ValueError('Значение словаря должно быть строкой')
-
-                normalize_word = self.normalize_word(word)
-                normalize_translation = self.normalize_word(translation)
-                normalized_words[normalize_word] = normalize_translation
-            self._words = normalized_words
+            self._words = self._normalize_dict(words)
 
     def __contains__(self, word):
         """
@@ -198,6 +183,25 @@ class Anki:
             raise ValueError('Слово должно быть строкой')
         return word.lower().strip()
 
+    def _normalize_dict(self, words):
+        """Докстринг"""
+        if not isinstance(words, dict):
+            raise ValueError(
+                'Значение параметра "words" должно быть словарём'
+            )
+        normalized_words = {}
+        for word, translation in words.items():
+            if not isinstance(word, str):
+                raise ValueError('Ключ словаря должен быть строкой')
+
+            if not isinstance(translation, str):
+                raise ValueError('Значение словаря должно быть строкой')
+
+            normalize_word = self.normalize_word(word)
+            normalize_translation = self.normalize_word(translation)
+            normalized_words[normalize_word] = normalize_translation
+        return normalized_words        
+
     def add_word(self, word, translation):
         """
         Добавляет слово и его перевод в словарь.
@@ -232,31 +236,18 @@ class Anki:
         normalize_translation = self.normalize_word(translation)
         self._words[normalize_word] = normalize_translation
 
-    def get_words(self):
-        """
-        Возвращает копию словаря всех слов и переводов.
+    @property
+    def words(self):
+        """Докстринг геттер"""
+        return {**self._words}
 
-        Возвращается глубокая копия, чтобы предотвратить случайное
-        изменение внутреннего состояния объекта.
-
-        Returns
-        -------
-        dict
-            Копия словаря, где ключи — нормализованные слова,
-            значения — нормализованные переводы.
-
-        Examples
-        --------
-        >>> anki = Anki(words={"Cat": "Кошка"})
-        >>> words = anki.get_words()
-        >>> words
-        {'cat': 'кошка'}
-        >>> words["dog"] = "собака"  # не влияет на внутренний словарь
-        >>> anki.get_words()
-        {'cat': 'кошка'}
-        """
-        import copy
-        return copy.deepcopy(self._words)
+    @words.setter
+    def words(self, new_words):
+        """Докстринг сеттер"""
+        if new_words is None:
+            self._words = {}
+        else:
+            self._words = self._normalize_dict(new_words)
 
     def get_random_word(self):
         """
