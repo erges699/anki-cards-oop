@@ -4,6 +4,31 @@ import requests
 from pathlib import Path
 
 
+class LoaderRegistry:
+
+    def __init__(self):
+        self._registry = {}
+
+    def register(self, ident):
+        """Регистрирует класс загрузчик в реестре `self._registry`"""
+        def decorator(cls):
+            self._registry[ident] = cls
+            return cls
+
+        return decorator
+
+    def get_loader(self, ident):
+        """Выбирает конкретный класс загрузчика по идентификатору"""
+
+        try:
+            return self._registry[ident]
+        except KeyError:
+            raise ValueError(f"Неизвестный тип источника слов: {ident}")
+
+
+loader_registry = LoaderRegistry()
+
+
 class BaseFileLoader:
     """
     Базовый класс для загрузчиков файлов со словами.
@@ -147,6 +172,7 @@ class BaseFileLoader:
         raise NotImplementedError
 
 
+@loader_registry.register('.txt')
 class TextFileLoader(BaseFileLoader):
     """
     Загрузчик для текстовых файлов с разделителем-запятой.
@@ -237,6 +263,7 @@ class TextFileLoader(BaseFileLoader):
             file_object.write(f'{word},{translation}\n')
 
 
+@loader_registry.register('.tsv')
 class TSVFileLoader(BaseFileLoader):
     """
     Загрузчик для TSV (Tab‑Separated Values) файлов.
@@ -328,6 +355,7 @@ class TSVFileLoader(BaseFileLoader):
             file_object.write(f'{word}\t{translation}\n')
 
 
+@loader_registry.register('.json')
 class JsonFileLoader(BaseFileLoader):
     """
     Загрузчик для JSON‑файлов.
@@ -410,6 +438,7 @@ class JsonFileLoader(BaseFileLoader):
         json.dump(words, file_object, indent=2, ensure_ascii=False)
 
 
+@loader_registry.register('http')
 class JsonNetworkLoader():
     """
     Загрузчик для JSON-файлов.
