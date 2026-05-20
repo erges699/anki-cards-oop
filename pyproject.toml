@@ -17,9 +17,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest"
-] 
-
+    "pytest",
+    "mypy"
+]
 
 [project.scripts]
 anki = "anki.main:main"
