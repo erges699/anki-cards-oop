@@ -122,7 +122,7 @@ class TextUI:
         """
         print(f'Для завершения игры введите "{self.STOP_WORD}"')
         self._anki_game.start_session()
-        
+
         try:
             while True:
                 try:
@@ -130,15 +130,15 @@ class TextUI:
                 except ValueError:
                     print('Словарь пуст. Добавьте слова для начала игры.')
                     break
-                
+
                 print(f'\nСлово: {word}')
                 user_input = input('Введите перевод: ').strip()
-                
+
                 if user_input.lower() == self.STOP_WORD:
                     # Пользователь решил завершить тренировку
                     self._anki_game.end_session()
                     break
-                
+
                 try:
                     is_correct = self._anki_game.check_translation(
                         word, user_input
@@ -148,7 +148,7 @@ class TextUI:
                     print(f'Ошибка: {e}')
                     # Сессия уже завершена в check_translation
                     break
-                
+
                 if is_correct:
                     print('Правильно')
                     # Сессия продолжается
@@ -162,7 +162,7 @@ class TextUI:
             # Убедимся, что сессия завершена (на случай непредвиденных ошибок)
             if self._anki_game._session_active:
                 self._anki_game.end_session()
-        
+
         # Вывод статистики
         stats = self._anki_game.last_session_stats
         print('\nТренировка завершена.')
