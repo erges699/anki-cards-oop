@@ -2,17 +2,17 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import pathlib
+# import pathlib
 
 from anki.anki import Anki
 from anki.ui import TextUI
-from anki.loader import loader_registry, BaseFileLoader, JsonNetworkLoader
-from typing import Union, Iterator
+from anki.loader import loader_registry, LoaderProtocol
+from typing import Iterator
 
 
 @contextlib.contextmanager
 def game_context(
-    loader: Union[BaseFileLoader, JsonNetworkLoader],
+    loader: LoaderProtocol,
     anki: Anki,
 ) -> Iterator[Anki]:
     """
@@ -49,22 +49,13 @@ def game_context(
         loader.save_words(anki.words)
 
 
-def get_loader(source: str) -> Union[BaseFileLoader, JsonNetworkLoader]:
+def get_loader(source: str) -> LoaderProtocol:
     """
     Автоматические выбирает конкретную реализацию загрузчика,
     в зависимости от `source`.
     """
-
-    if source.startswith("http"):
-        identity = "http"
-        args = {"url": source}
-    else:
-        identity = pathlib.Path(source).suffix
-        args = {"file_path": source}
-
-    loader_cls = loader_registry.get_loader(identity)
-
-    return loader_cls(**args)
+    loader_cls = loader_registry.get_loader(source)
+    return loader_cls.from_source(source)
 
 
 def main() -> None:

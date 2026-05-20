@@ -3,29 +3,58 @@ from __future__ import annotations
 import json
 import requests
 from pathlib import Path
-from typing import Dict, Type, Union, TextIO
+from typing import Union, Callable, Dict, Protocol, Self, TextIO
+
+
+class LoaderProtocol(Protocol):
+    """Протокол для загрузчиков слов."""
+    @classmethod
+    def from_source(cls, source: str) -> Self:
+        ...
+
+    def load_words(self) -> Dict[str, str]:
+        """
+        Загружает слова из источника.
+
+        Returns
+        -------
+        Dict[str, str]
+            Словарь, где ключи - слова, значения - переводы.
+        """
+        ...
+
+    def save_words(self, words: Dict[str, str]) -> None:
+        """
+        Сохраняет слова в источник.
+
+        Parameters
+        ----------
+        words : Dict[str, str]
+            Словарь, где ключи - слова, значения - переводы.
+        """
+        ...
 
 
 class LoaderRegistry:
-
     def __init__(self) -> None:
-        self._registry: Dict[str, Type[BaseFileLoader]] = {}
+        self._registry: dict[type[LoaderProtocol], Callable[[str], bool]] = {}
 
-    def register(self, ident: str):
-        """Регистрирует класс загрузчик в реестре `self._registry`"""
-        def decorator(cls: Type[BaseFileLoader]) -> Type[BaseFileLoader]:
-            self._registry[ident] = cls
+    def register(
+        self,
+        predicate: Callable[[str], bool],
+    ) -> Callable[[type[LoaderProtocol]], type[LoaderProtocol]]:
+        def decorator(cls: type[LoaderProtocol]) -> type[LoaderProtocol]:
+            self._registry[cls] = predicate
             return cls
-
         return decorator
 
-    def get_loader(self, ident: str) -> Type[BaseFileLoader]:
-        """Выбирает конкретный класс загрузчика по идентификатору"""
+    def get_loader(self, source: str) -> type[LoaderProtocol]:
+        """Находит подходящий загрузчик для `source`"""
+        for loader_cls, predicate in self._registry.items():
+            if predicate(source):
+                return loader_cls
 
-        try:
-            return self._registry[ident]
-        except KeyError:
-            raise ValueError(f"Неизвестный тип источника слов: {ident}")
+        raise ValueError(f"Неизвестный источник: {source}")
 
 
 loader_registry = LoaderRegistry()
@@ -174,276 +203,7 @@ class BaseFileLoader:
         raise NotImplementedError
 
 
-@loader_registry.register('.txt')
-class TextFileLoader(BaseFileLoader):
-    """
-    Загрузчик для текстовых файлов с разделителем-запятой.
-
-    Реализует логику загрузки слов из текстового файла и сохранения
-    слов в текстовый файл в формате "слово,перевод".
-
-    Parameters
-    ----------
-    file_path : str or Path, optional
-        Путь к текстовому файлу. По умолчанию './words.txt'.
-
-    Attributes
-    ----------
-    DEFAULT_FILE_PATH : str
-        Путь по умолчанию ('./words.txt').
-
-    Notes
-    -----
-    Формат файла: каждая строка содержит одно слово и его перевод,
-    разделённые запятой. Пробелы вокруг слова и перевода обрезаются.
-
-    Пример содержимого файла:
-        apple,яблоко
-        cat,кот
-        dog,собака
-
-    Raises
-    ------
-    ValueError
-        Если строка не содержит запятой или содержит более одной запятой.
-    """
-
-    DEFAULT_FILE_PATH = "./words.txt"
-
-    def _load_from_file(self, file_object):
-        """
-        Загружает слова из текстового файла с разделителем-запятой.
-
-        Parameters
-        ----------
-        file_object : io.TextIOBase
-            Текстовый файловый объект, открытый для чтения.
-
-        Returns
-        -------
-        dict
-            Словарь, где ключи - слова, значения - переводы.
-
-        Raises
-        ------
-        ValueError
-            Если строка не содержит ровно одной запятой.
-
-        Notes
-        -----
-        Каждая строка файла должна иметь формат "слово,перевод".
-        Пробелы вокруг слова и перевода обрезаются.
-        Пустые строки игнорируются (split вызовет ValueError).
-        """
-        words = {}
-        for line in file_object:
-            word, translation = line.split(",")
-            words[word.strip()] = translation.strip()
-        return words
-
-    def _save_to_file(
-            self, words: Dict[str, str], file_object: TextIO
-    ) -> None:
-        """
-        Сохраняет слова в текстовый файл с разделителем-запятой.
-
-        Parameters
-        ----------
-        words : dict
-            Словарь, где ключи - слова, значения - переводы.
-        file_object : io.TextIOBase
-            Текстовый файловый объект, открытый для записи.
-
-        Returns
-        -------
-        None
-
-        Notes
-        -----
-        Каждая пара "слово,перевод" записывается на отдельной строке.
-        Пробелы вокруг слова и перевода не добавляются.
-        """
-        for word, translation in words.items():
-            file_object.write(f'{word},{translation}\n')
-
-
-@loader_registry.register('.tsv')
-class TSVFileLoader(BaseFileLoader):
-    """
-    Загрузчик для TSV (Tab‑Separated Values) файлов.
-
-    Реализует логику загрузки слов из TSV‑файла и сохранения
-    слов в TSV‑файл в формате "слово\tперевод".
-
-    Parameters
-    ----------
-    file_path : str or Path, optional
-        Путь к TSV‑файлу. По умолчанию './words.tsv'.
-
-    Attributes
-    ----------
-    DEFAULT_FILE_PATH : str
-        Путь по умолчанию ('./words.tsv').
-
-    Notes
-    -----
-    Формат файла: каждая строка содержит одно слово и его перевод,
-    разделённые символом табуляции (\\t). Пробелы вокруг слова и перевода
-    обрезаются.
-
-    Пример содержимого файла:
-        apple\tяблоко
-        cat\tкот
-        dog\tсобака
-
-    Raises
-    ------
-    ValueError
-        Если строка не содержит ровно одной табуляции.
-    """
-
-    DEFAULT_FILE_PATH = "./words.tsv"
-
-    def _load_from_file(self, file_object: TextIO) -> Dict[str, str]:
-        """
-        Загружает слова из TSV‑файла с разделителем-табуляцией.
-
-        Parameters
-        ----------
-        file_object : io.TextIOBase
-            Текстовый файловый объект, открытый для чтения.
-
-        Returns
-        -------
-        dict
-            Словарь, где ключи - слова, значения - переводы.
-
-        Raises
-        ------
-        ValueError
-            Если строка не содержит ровно одной табуляции.
-
-        Notes
-        -----
-        Каждая строка файла должна иметь формат "слово\\tперевод".
-        Пробелы вокруг слова и перевода обрезаются.
-        Пустые строки игнорируются (split вызовет ValueError).
-        """
-        words = {}
-        for line in file_object:
-            word, translation = line.split("\t")
-            words[word.strip()] = translation.strip()
-        return words
-
-    def _save_to_file(self, words, file_object):
-        """
-        Сохраняет слова в TSV‑файл с разделителем-табуляцией.
-
-        Parameters
-        ----------
-        words : dict
-            Словарь, где ключи - слова, значения - переводы.
-        file_object : io.TextIOBase
-            Текстовый файловый объект, открытый для записи.
-
-        Returns
-        -------
-        None
-
-        Notes
-        -----
-        Каждая пара "слово\\tперевод" записывается на отдельной строке.
-        Пробелы вокруг слова и перевода не добавляются.
-        """
-        for word, translation in words.items():
-            file_object.write(f'{word}\t{translation}\n')
-
-
-@loader_registry.register('.json')
-class JsonFileLoader(BaseFileLoader):
-    """
-    Загрузчик для JSON‑файлов.
-
-    Реализует логику загрузки слов из JSON‑файла и сохранения
-    слов в JSON‑файл.
-
-    Parameters
-    ----------
-    file_path : str or Path, optional
-        Путь к JSON‑файлу. По умолчанию './words.json'.
-
-    Attributes
-    ----------
-    DEFAULT_FILE_PATH : str
-        Путь по умолчанию ('./words.json').
-
-    Notes
-    -----
-    Формат файла: JSON‑объект, где ключи - слова, значения - переводы.
-    Файл сохраняется с отступами (indent=2) и поддержкой Unicode
-    (ensure_ascii=False).
-
-    Пример содержимого файла:
-        {
-          "apple": "яблоко",
-          "cat": "кот",
-          "dog": "собака"
-        }
-
-    Raises
-    ------
-    json.JSONDecodeError
-        Если файл содержит некорректный JSON.
-    """
-
-    DEFAULT_FILE_PATH = "./words.json"
-
-    def _load_from_file(self, file_object: TextIO) -> dict[str, str]:
-        """
-        Загружает слова из JSON‑файла.
-
-        Parameters
-        ----------
-        file_object : io.TextIOBase
-            Текстовый файловый объект, открытый для чтения.
-
-        Returns
-        -------
-        dict
-            Словарь, где ключи - слова, значения - переводы.
-
-        Raises
-        ------
-        json.JSONDecodeError
-            Если файл содержит некорректный JSON.
-        """
-        words: dict[str, str] = json.load(file_object)
-        return words
-
-    def _save_to_file(self, words, file_object):
-        """
-        Сохраняет слова в JSON‑файл.
-
-        Parameters
-        ----------
-        words : dict
-            Словарь, где ключи - слова, значения - переводы.
-        file_object : io.TextIOBase
-            Текстовый файловый объект, открытый для записи.
-
-        Returns
-        -------
-        None
-
-        Notes
-        -----
-        JSON записывается с отступами (indent=2) и поддержкой Unicode
-        (ensure_ascii=False).
-        """
-        json.dump(words, file_object, indent=2, ensure_ascii=False)
-
-
-@loader_registry.register('http')
+@loader_registry.register(lambda s: s.startswith("http"))
 class JsonNetworkLoader():
     """
     Загрузчик для JSON-файлов.
@@ -455,6 +215,23 @@ class JsonNetworkLoader():
     ----------
     url : str or Path, optional
     """
+
+    @classmethod
+    def from_source(cls, source: str) -> Self:
+        """
+        Создаёт экземпляр загрузчика для указанного источника.
+        
+        Parameters
+        ----------
+        source : str
+            URL JSON-файла.
+        
+        Returns
+        -------
+        JsonNetworkLoader
+            Экземпляр загрузчика.
+        """
+        return cls(url=source)
 
     def __init__(self, url: str):
         """
@@ -529,3 +306,323 @@ class JsonNetworkLoader():
             words (dict): Словарь вида {"слово": "перевод"} для сохранения.
         """
         pass
+
+
+@loader_registry.register(lambda s: s.endswith(".txt"))
+class TextFileLoader(BaseFileLoader):
+    """
+    Загрузчик для текстовых файлов с разделителем-запятой.
+
+    Реализует логику загрузки слов из текстового файла и сохранения
+    слов в текстовый файл в формате "слово,перевод".
+
+    Parameters
+    ----------
+    file_path : str or Path, optional
+        Путь к текстовому файлу. По умолчанию './words.txt'.
+
+    Attributes
+    ----------
+    DEFAULT_FILE_PATH : str
+        Путь по умолчанию ('./words.txt').
+
+    Notes
+    -----
+    Формат файла: каждая строка содержит одно слово и его перевод,
+    разделённые запятой. Пробелы вокруг слова и перевода обрезаются.
+
+    Пример содержимого файла:
+        apple,яблоко
+        cat,кот
+        dog,собака
+
+    Raises
+    ------
+    ValueError
+        Если строка не содержит запятой или содержит более одной запятой.
+    """
+
+    DEFAULT_FILE_PATH = "./words.txt"
+
+    @classmethod
+    def from_source(cls, source: str) -> Self:
+        """
+        Создаёт экземпляр загрузчика для указанного источника.
+        
+        Parameters
+        ----------
+        source : str
+            Путь к файлу.
+        
+        Returns
+        -------
+        TextFileLoader
+            Экземпляр загрузчика.
+        """
+        return cls(file_path=source)
+
+    def _load_from_file(self, file_object):
+        """
+        Загружает слова из текстового файла с разделителем-запятой.
+
+        Parameters
+        ----------
+        file_object : io.TextIOBase
+            Текстовый файловый объект, открытый для чтения.
+
+        Returns
+        -------
+        dict
+            Словарь, где ключи - слова, значения - переводы.
+
+        Raises
+        ------
+        ValueError
+            Если строка не содержит ровно одной запятой.
+
+        Notes
+        -----
+        Каждая строка файла должна иметь формат "слово,перевод".
+        Пробелы вокруг слова и перевода обрезаются.
+        Пустые строки игнорируются (split вызовет ValueError).
+        """
+        words = {}
+        for line in file_object:
+            word, translation = line.split(",")
+            words[word.strip()] = translation.strip()
+        return words
+
+    def _save_to_file(
+            self, words: Dict[str, str], file_object: TextIO
+    ) -> None:
+        """
+        Сохраняет слова в текстовый файл с разделителем-запятой.
+
+        Parameters
+        ----------
+        words : dict
+            Словарь, где ключи - слова, значения - переводы.
+        file_object : io.TextIOBase
+            Текстовый файловый объект, открытый для записи.
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        Каждая пара "слово,перевод" записывается на отдельной строке.
+        Пробелы вокруг слова и перевода не добавляются.
+        """
+        for word, translation in words.items():
+            file_object.write(f'{word},{translation}\n')
+
+
+@loader_registry.register(lambda s: s.endswith(".tsv"))
+class TSVFileLoader(BaseFileLoader):
+    """
+    Загрузчик для TSV (Tab‑Separated Values) файлов.
+
+    Реализует логику загрузки слов из TSV‑файла и сохранения
+    слов в TSV‑файл в формате "слово\tперевод".
+
+    Parameters
+    ----------
+    file_path : str or Path, optional
+        Путь к TSV‑файлу. По умолчанию './words.tsv'.
+
+    Attributes
+    ----------
+    DEFAULT_FILE_PATH : str
+        Путь по умолчанию ('./words.tsv').
+
+    Notes
+    -----
+    Формат файла: каждая строка содержит одно слово и его перевод,
+    разделённые символом табуляции (\\t). Пробелы вокруг слова и перевода
+    обрезаются.
+
+    Пример содержимого файла:
+        apple\tяблоко
+        cat\tкот
+        dog\tсобака
+
+    Raises
+    ------
+    ValueError
+        Если строка не содержит ровно одной табуляции.
+    """
+
+    DEFAULT_FILE_PATH = "./words.tsv"
+
+    @classmethod
+    def from_source(cls, source: str) -> Self:
+        """
+        Создаёт экземпляр загрузчика для указанного источника.
+        
+        Parameters
+        ----------
+        source : str
+            Путь к TSV-файлу.
+        
+        Returns
+        -------
+        TSVFileLoader
+            Экземпляр загрузчика.
+        """
+        return cls(file_path=source)
+
+    def _load_from_file(self, file_object: TextIO) -> Dict[str, str]:
+        """
+        Загружает слова из TSV‑файла с разделителем-табуляцией.
+
+        Parameters
+        ----------
+        file_object : io.TextIOBase
+            Текстовый файловый объект, открытый для чтения.
+
+        Returns
+        -------
+        dict
+            Словарь, где ключи - слова, значения - переводы.
+
+        Raises
+        ------
+        ValueError
+            Если строка не содержит ровно одной табуляции.
+
+        Notes
+        -----
+        Каждая строка файла должна иметь формат "слово\\tперевод".
+        Пробелы вокруг слова и перевода обрезаются.
+        Пустые строки игнорируются (split вызовет ValueError).
+        """
+        words = {}
+        for line in file_object:
+            word, translation = line.split("\t")
+            words[word.strip()] = translation.strip()
+        return words
+
+    def _save_to_file(self, words, file_object):
+        """
+        Сохраняет слова в TSV‑файл с разделителем-табуляцией.
+
+        Parameters
+        ----------
+        words : dict
+            Словарь, где ключи - слова, значения - переводы.
+        file_object : io.TextIOBase
+            Текстовый файловый объект, открытый для записи.
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        Каждая пара "слово\\tперевод" записывается на отдельной строке.
+        Пробелы вокруг слова и перевода не добавляются.
+        """
+        for word, translation in words.items():
+            file_object.write(f'{word}\t{translation}\n')
+
+
+@loader_registry.register(lambda s: s.endswith(".json"))
+class JsonFileLoader(BaseFileLoader):
+    """
+    Загрузчик для JSON‑файлов.
+
+    Реализует логику загрузки слов из JSON‑файла и сохранения
+    слов в JSON‑файл.
+
+    Parameters
+    ----------
+    file_path : str or Path, optional
+        Путь к JSON‑файлу. По умолчанию './words.json'.
+
+    Attributes
+    ----------
+    DEFAULT_FILE_PATH : str
+        Путь по умолчанию ('./words.json').
+
+    Notes
+    -----
+    Формат файла: JSON‑объект, где ключи - слова, значения - переводы.
+    Файл сохраняется с отступами (indent=2) и поддержкой Unicode
+    (ensure_ascii=False).
+
+    Пример содержимого файла:
+        {
+          "apple": "яблоко",
+          "cat": "кот",
+          "dog": "собака"
+        }
+
+    Raises
+    ------
+    json.JSONDecodeError
+        Если файл содержит некорректный JSON.
+    """
+
+    DEFAULT_FILE_PATH = "./words.json"
+
+    @classmethod
+    def from_source(cls, source: str) -> Self:
+        """
+        Создаёт экземпляр загрузчика для указанного источника.
+        
+        Parameters
+        ----------
+        source : str
+            Путь к JSON-файлу.
+        
+        Returns
+        -------
+        JsonFileLoader
+            Экземпляр загрузчика.
+        """
+        return cls(file_path=source)
+
+    def _load_from_file(self, file_object: TextIO) -> dict[str, str]:
+        """
+        Загружает слова из JSON‑файла.
+
+        Parameters
+        ----------
+        file_object : io.TextIOBase
+            Текстовый файловый объект, открытый для чтения.
+
+        Returns
+        -------
+        dict
+            Словарь, где ключи - слова, значения - переводы.
+
+        Raises
+        ------
+        json.JSONDecodeError
+            Если файл содержит некорректный JSON.
+        """
+        words: dict[str, str] = json.load(file_object)
+        return words
+
+    def _save_to_file(self, words, file_object):
+        """
+        Сохраняет слова в JSON‑файл.
+
+        Parameters
+        ----------
+        words : dict
+            Словарь, где ключи - слова, значения - переводы.
+        file_object : io.TextIOBase
+            Текстовый файловый объект, открытый для записи.
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        JSON записывается с отступами (indent=2) и поддержкой Unicode
+        (ensure_ascii=False).
+        """
+        json.dump(words, file_object, indent=2, ensure_ascii=False)
