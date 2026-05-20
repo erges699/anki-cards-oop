@@ -101,7 +101,73 @@ class TextUI:
     def train_until_mistake(self):
         """
         Запускает интерактивную игру на проверку знаний до первой ошибки.
+
+        Использует тренировочную сессию класса Anki (`start_session`).
+        В цикле случайно выбирается слово из словаря, пользователь вводит
+        перевод. Если перевод верный, игра продолжается со следующим словом.
+        Если перевод неверный или пользователь вводит стоп-слово, сессия
+        завершается.
+
+        При активной сессии действует защита от накрутки: нельзя проверить
+        перевод слова, которое не было только что выдано, или повторно
+        проверить то же слово.
+
+        После завершения игры выводится статистика: количество правильных
+        ответов и общее время тренировки.
+
+        Raises
+        ------
+        ValueError
+            Косвенно, если словарь пуст и вызывается `get_random_word()`.
         """
+        print(f'Для завершения игры введите "{self.STOP_WORD}"')
+        self._anki_game.start_session()
+        
+        try:
+            while True:
+                try:
+                    word = self._anki_game.get_random_word()
+                except ValueError:
+                    print('Словарь пуст. Добавьте слова для начала игры.')
+                    break
+                
+                print(f'\nСлово: {word}')
+                user_input = input('Введите перевод: ').strip()
+                
+                if user_input.lower() == self.STOP_WORD:
+                    # Пользователь решил завершить тренировку
+                    self._anki_game.end_session()
+                    break
+                
+                try:
+                    is_correct = self._anki_game.check_translation(
+                        word, user_input
+                    )
+                except ValueError as e:
+                    # Исключение при несовпадении слова (защита от накруток)
+                    print(f'Ошибка: {e}')
+                    # Сессия уже завершена в check_translation
+                    break
+                
+                if is_correct:
+                    print('Правильно')
+                    # Сессия продолжается
+                else:
+                    correct_translation = self._anki_game.get_translation(word)
+                    print('Неправильно. '
+                          f'Правильный перевод: {correct_translation}')
+                    # Сессия уже завершена в check_translation
+                    break
+        finally:
+            # Убедимся, что сессия завершена (на случай непредвиденных ошибок)
+            if self._anki_game._session_active:
+                self._anki_game.end_session()
+        
+        # Вывод статистики
+        stats = self._anki_game.last_session_stats
+        print('\nТренировка завершена.')
+        print(f'Правильных ответов: {stats["correct_answers"]}')
+        print(f'Общее время: {stats["total_time"]:.2f} секунд')
 
     def add_words(self):
         """
