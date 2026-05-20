@@ -3,11 +3,11 @@ from __future__ import annotations
 import argparse
 import contextlib
 import pathlib
-from typing import Dict, Union, Iterator
 
 from anki.anki import Anki
 from anki.ui import TextUI
 from anki.loader import loader_registry, BaseFileLoader, JsonNetworkLoader
+from typing import Union, Iterator
 
 
 @contextlib.contextmanager

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import requests
 from pathlib import Path
-from typing import Dict,Type, Optional, Union, Any, Protocol, runtime_checkable, TextIO
+from typing import Dict, Type, Union, TextIO
 
 
 class LoaderRegistry:
@@ -398,7 +398,7 @@ class JsonFileLoader(BaseFileLoader):
 
     DEFAULT_FILE_PATH = "./words.json"
 
-    def _load_from_file(self, file_object):
+    def _load_from_file(self, file_object: TextIO) -> dict[str, str]:
         """
         Загружает слова из JSON‑файла.
 
@@ -417,7 +417,8 @@ class JsonFileLoader(BaseFileLoader):
         json.JSONDecodeError
             Если файл содержит некорректный JSON.
         """
-        return json.load(file_object)
+        words: dict[str, str] = json.load(file_object)
+        return words
 
     def _save_to_file(self, words, file_object):
         """
