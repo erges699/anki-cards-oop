@@ -1,23 +1,25 @@
+from __future__ import annotations
+
 import json
 import requests
-
 from pathlib import Path
+from typing import Dict,Type, Optional, Union, Any, Protocol, runtime_checkable, TextIO
 
 
 class LoaderRegistry:
 
-    def __init__(self):
-        self._registry = {}
+    def __init__(self) -> None:
+        self._registry: Dict[str, Type[BaseFileLoader]] = {}
 
-    def register(self, ident):
+    def register(self, ident: str):
         """Регистрирует класс загрузчик в реестре `self._registry`"""
-        def decorator(cls):
+        def decorator(cls: Type[BaseFileLoader]) -> Type[BaseFileLoader]:
             self._registry[ident] = cls
             return cls
 
         return decorator
 
-    def get_loader(self, ident):
+    def get_loader(self, ident: str) -> Type[BaseFileLoader]:
         """Выбирает конкретный класс загрузчика по идентификатору"""
 
         try:
@@ -54,7 +56,7 @@ class BaseFileLoader:
     `_load_from_file` и `_save_to_file`.
     """
 
-    def __init__(self, *, file_path='./words.txt'):
+    def __init__(self, *, file_path: Union[str, Path] = './words.txt') -> None:
         self._file_path = Path(file_path)
 
         if self._file_path.exists() and self._file_path.is_dir():
@@ -62,7 +64,7 @@ class BaseFileLoader:
                 f"Путь {file_path} является директорией, а должен быть файлом"
             )
 
-    def load_words(self):
+    def load_words(self) -> Dict[str, str]:
         """
         Загружает слова из файла.
 
@@ -84,7 +86,7 @@ class BaseFileLoader:
         with self._file_path.open("r", encoding="utf-8") as f:
             return self._load_from_file(f)
 
-    def save_words(self, words):
+    def save_words(self, words: Dict[str, str]) -> None:
         """
         Сохраняет слова в файл.
 
@@ -239,7 +241,9 @@ class TextFileLoader(BaseFileLoader):
             words[word.strip()] = translation.strip()
         return words
 
-    def _save_to_file(self, words, file_object):
+    def _save_to_file(
+            self, words: Dict[str, str], file_object: TextIO
+    ) -> None:
         """
         Сохраняет слова в текстовый файл с разделителем-запятой.
 
@@ -300,7 +304,7 @@ class TSVFileLoader(BaseFileLoader):
 
     DEFAULT_FILE_PATH = "./words.tsv"
 
-    def _load_from_file(self, file_object):
+    def _load_from_file(self, file_object: TextIO) -> Dict[str, str]:
         """
         Загружает слова из TSV‑файла с разделителем-табуляцией.
 

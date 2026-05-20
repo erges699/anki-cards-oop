@@ -1,14 +1,20 @@
+from __future__ import annotations
+
 import argparse
 import contextlib
 import pathlib
+from typing import Dict, Union, Iterator
 
 from anki.anki import Anki
 from anki.ui import TextUI
-from anki.loader import loader_registry
+from anki.loader import loader_registry, BaseFileLoader, JsonNetworkLoader
 
 
 @contextlib.contextmanager
-def game_context(loader, anki):
+def game_context(
+    loader: Union[BaseFileLoader, JsonNetworkLoader],
+    anki: Anki,
+) -> Iterator[Anki]:
     """
     Контекстный менеджер для управления жизненным циклом игры.
 
@@ -43,7 +49,7 @@ def game_context(loader, anki):
         loader.save_words(anki.words)
 
 
-def get_loader(source):
+def get_loader(source: str) -> Union[BaseFileLoader, JsonNetworkLoader]:
     """
     Автоматические выбирает конкретную реализацию загрузчика,
     в зависимости от `source`.
@@ -61,7 +67,7 @@ def get_loader(source):
     return loader_cls(**args)
 
 
-def main():
+def main() -> None:
     # Создали объект парсера аргументов командной строки.
     parser = argparse.ArgumentParser(prog="anki")
 

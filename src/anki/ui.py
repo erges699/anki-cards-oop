@@ -1,4 +1,8 @@
+from __future__ import annotations
+
 import textwrap
+from typing import Optional
+from anki.anki import Anki
 
 
 class TextUI:
@@ -45,7 +49,7 @@ class TextUI:
         5. Выход
         """).strip()
 
-    def __init__(self, anki):
+    def __init__(self, anki: 'Anki') -> None:
         """
         Инициализирует текстовый интерфейс с экземпляром игры Anki.
 
@@ -63,7 +67,7 @@ class TextUI:
             raise ValueError("anki не может быть None")
         self._anki_game = anki
 
-    def start_game(self):
+    def start_game(self) -> None:
         """
         Запускает интерактивную игру на проверку знаний.
 
@@ -98,7 +102,7 @@ class TextUI:
                 correct = self._anki_game.get_translation(word)
                 print(f'Неправильно. Правильный перевод: {correct}')
 
-    def train_until_mistake(self):
+    def train_until_mistake(self) -> None:
         """
         Запускает интерактивную игру на проверку знаний до первой ошибки.
 
@@ -169,7 +173,7 @@ class TextUI:
         print(f'Правильных ответов: {stats["correct_answers"]}')
         print(f'Общее время: {stats["total_time"]:.2f} секунд')
 
-    def add_words(self):
+    def add_words(self) -> None:
         """
         Режим добавления новых слов в словарь.
 
@@ -200,7 +204,7 @@ class TextUI:
             except ValueError as e:
                 print(f'Ошибка: {e}')
 
-    def show_words(self):
+    def show_words(self) -> None:
         """
         Выводит все слова и их переводы из словаря.
 
@@ -211,7 +215,7 @@ class TextUI:
         for word, translation in self._anki_game:
             print(f'{word} - {translation}')
 
-    def main_loop(self):
+    def main_loop(self) -> None:
         """
         Основной цикл интерфейса, отображающий меню и обрабатывающий выбор.
 

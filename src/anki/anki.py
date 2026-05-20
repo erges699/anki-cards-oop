@@ -1,4 +1,5 @@
 import time
+from typing import Dict, Optional, Iterator, Tuple, Union
 
 
 class Anki:
@@ -32,25 +33,25 @@ class Anki:
     >>> anki.get_words()
     {'apple': 'яблоко', 'dog': 'собака'}
     """
-    def __init__(self, *, words=None):
+    def __init__(self, *, words: Optional[Dict[str, str]] = None) -> None:
         if words is None:
-            self._words = {}
+            self._words: Dict[str, str] = {}
         else:
             self._words = self._normalize_dict(words)
         # Начата ли сессия тренировки до первой ошибки.
-        self._session_active = False
+        self._session_active: bool = False
         # Время начала тренировки.
-        self._session_start_time = 0.0
+        self._session_start_time: float = 0.0
         # Количество правильных ответов.
-        self._session_user_score = 0
-        self._last_word = None
+        self._session_user_score: int = 0
+        self._last_word: Optional[str] = None
         # Информация о последней тренировке.
-        self.last_session_stats = {
+        self.last_session_stats: Dict[str, Union[int, float]] = {
             "correct_answers": 0,
             "total_time": 0.0,
         }
 
-    def __contains__(self, word):
+    def __contains__(self, word: str) -> bool:
         """
         Проверяет, содержится ли слово в словаре.
 
@@ -89,7 +90,7 @@ class Anki:
         normalized_word = self.normalize_word(word)
         return normalized_word in self._words
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Возвращает неформальное строковое представление объекта Anki.
 
@@ -120,7 +121,7 @@ class Anki:
         count = len(self._words)
         return f'Anki словарь с {count} слов(ами)'
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Tuple[str, str]]:
         """
         Возвращает итератор по парам (слово, перевод).
 
@@ -146,7 +147,7 @@ class Anki:
         """
         return iter(self._words.items())
 
-    def __len__(self):
+    def __len__(self) -> int:
         """
         Возвращает количество слов в словаре.
 
@@ -166,7 +167,7 @@ class Anki:
         """
         return len(self._words)
 
-    def start_session(self):
+    def start_session(self) -> None:
         """
         Начинает новую тренировочную сессию.
 
@@ -186,7 +187,7 @@ class Anki:
         self._session_start_time = time.time()
         self._session_user_score = 0
 
-    def end_session(self):
+    def end_session(self) -> None:
         """
         Завершает текущую тренировочную сессию.
 
@@ -212,7 +213,7 @@ class Anki:
         self._session_start_time = 0.0
 
     @staticmethod
-    def normalize_word(word):
+    def normalize_word(word: str) -> str:
         """
         Нормализует слово: приводит к нижнему регистру и удаляет пробелы
         по краям.
@@ -243,7 +244,7 @@ class Anki:
             raise ValueError('Слово должно быть строкой')
         return word.lower().strip()
 
-    def _normalize_dict(self, words):
+    def _normalize_dict(self, words: Dict[str, str]) -> Dict[str, str]:
         """Докстринг"""
         if not isinstance(words, dict):
             raise ValueError(
@@ -262,7 +263,7 @@ class Anki:
             normalized_words[normalize_word] = normalize_translation
         return normalized_words
 
-    def add_word(self, word, translation):
+    def add_word(self, word: str, translation: str) -> None:
         """
         Добавляет слово и его перевод в словарь.
 
@@ -297,12 +298,12 @@ class Anki:
         self._words[normalize_word] = normalize_translation
 
     @property
-    def words(self):
+    def words(self) -> Dict[str, str]:
         """Докстринг геттер"""
         return {**self._words}
 
     @words.setter
-    def words(self, new_words):
+    def words(self, new_words: Optional[Dict[str, str]]) -> None:
         """
         Устанавливает новый словарь слов.
 
@@ -329,7 +330,7 @@ class Anki:
         else:
             self._words = self._normalize_dict(new_words)
 
-    def get_random_word(self):
+    def get_random_word(self) -> str:
         """
         Возвращает случайное слово из словаря.
 
@@ -357,7 +358,7 @@ class Anki:
         self._last_word = word
         return word
 
-    def check_translation(self, word, translation):
+    def check_translation(self, word: str, translation: str) -> bool:
         """
         Проверяет, является ли перевод правильным.
 
@@ -441,7 +442,7 @@ class Anki:
                 # Если перевод правильный, сессия продолжается
         return is_correct
 
-    def get_translation(self, word):
+    def get_translation(self, word: str) -> str:
         """
         Возвращает перевод слова.
 
