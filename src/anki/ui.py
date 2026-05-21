@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import textwrap
-
 from anki.anki import Anki
+from typing import Callable
 
 
 class TextUI:
@@ -40,15 +39,6 @@ class TextUI:
     """
     STOP_WORD = "стоп"
 
-    MENU = textwrap.dedent("""\
-        Меню:
-        1. Начать игру
-        2. Добавить слова
-        3. Вывод всех слов
-        4. Тренировка до первой ошибки
-        5. Выход
-        """).strip()
-
     def __init__(self, anki: 'Anki') -> None:
         """
         Инициализирует текстовый интерфейс с экземпляром игры Anki.
@@ -63,9 +53,26 @@ class TextUI:
         ValueError
             Если переданный аргумент `anki` равен None.
         """
+        self._is_running: bool = False
         if anki is None:
             raise ValueError("anki не может быть None")
         self._anki_game = anki
+        # (Функция, описание, условие_видимости)
+        self._command_definition: list[tuple[Callable[..., None], str,
+                                             Callable[..., bool]]] = [
+            (self.start_game, "Начать игру", lambda: len(self._anki_game) > 0),
+            (self.add_words, "Добавить слова", lambda: True),
+            (self.train_until_mistake, "Тренировка до первой ошибки",
+             lambda: len(self._anki_game) > 0),
+            (self.show_words, "Показать все слова",
+             lambda: len(self._anki_game) > 0),
+            (self.find_translation, "Найти перевод",
+             lambda: len(self._anki_game) > 0),
+            (self.stop, "Выход", lambda: True),
+        ]
+
+    def stop(self):
+        self._is_running = False
 
     def start_game(self) -> None:
         """
@@ -215,6 +222,30 @@ class TextUI:
         for word, translation in self._anki_game:
             print(f'{word} - {translation}')
 
+    def find_translation(self) -> None:
+        """
+        Находит перевод слова в словаре игры.
+
+        Запрашивает у пользователя слово для поиска.
+        Проверяет наличие слова в словаре игры.
+        Выводит перевод, если слово найдено.
+        Если слова нет в словаре, сообщает об этом.
+        """
+        word = input('Введите слово для поиска: ').strip()
+        if word in self._anki_game:
+            translation = self._anki_game.get_translation(word)
+            print(f'Перевод слова "{word}": {translation}')
+        else:
+            print(f'Слово "{word}" не найдено в словаре.')
+
+    def get_available_commands(self) -> list[tuple[Callable[..., None], str]]:
+        """Возвращает доступные команды для меню."""
+        commands = []
+        for func, description, is_visible in self._command_definition:
+            if is_visible():
+                commands.append((func, description))
+        return commands
+
     def main_loop(self) -> None:
         """
         Основной цикл интерфейса, отображающий меню и обрабатывающий выбор.
@@ -231,21 +262,24 @@ class TextUI:
         -----
         Меню содержит пять пунктов, описанных в атрибуте `MENU`.
         """
-        while True:
-            print(self.MENU)
-            choice = input("> ").strip()
+        self._is_running = True
 
-            if choice == "1":
-                self.start_game()
-            elif choice == "2":
-                self.add_words()
-            elif choice == "3":
-                self.show_words()
-            elif choice == "4":
-                # print("\nДанная функциональность ещё не реализована")
-                self.train_until_mistake()
-            elif choice == "5":
-                print("\nВыход из программы.")
-                break
+        while self._is_running:
+            menu_choices: list[str] = []
+            commands = {}
+
+            for i, (func, description) in enumerate(
+                self.get_available_commands(), 1
+            ):
+                menu_choices.append(f"{i}. {description}")
+                commands[str(i)] = func
+
+            # Показываем меню
+            print("Меню:\n" + "\n".join(menu_choices))
+            choice = input("Выберите пункт: ")
+
+            if choice in commands:
+                commands[choice]()
             else:
-                print("\nНеверный выбор. Пожалуйста, введите число от 1 до 5.")
+                print("Неверный пункт меню")
+            print()

@@ -220,12 +220,12 @@ class JsonNetworkLoader():
     def from_source(cls, source: str) -> Self:
         """
         Создаёт экземпляр загрузчика для указанного источника.
-        
+
         Parameters
         ----------
         source : str
             URL JSON-файла.
-        
+
         Returns
         -------
         JsonNetworkLoader
@@ -348,12 +348,12 @@ class TextFileLoader(BaseFileLoader):
     def from_source(cls, source: str) -> Self:
         """
         Создаёт экземпляр загрузчика для указанного источника.
-        
+
         Parameters
         ----------
         source : str
             Путь к файлу.
-        
+
         Returns
         -------
         TextFileLoader
@@ -459,12 +459,12 @@ class TSVFileLoader(BaseFileLoader):
     def from_source(cls, source: str) -> Self:
         """
         Создаёт экземпляр загрузчика для указанного источника.
-        
+
         Parameters
         ----------
         source : str
             Путь к TSV-файлу.
-        
+
         Returns
         -------
         TSVFileLoader
@@ -570,12 +570,12 @@ class JsonFileLoader(BaseFileLoader):
     def from_source(cls, source: str) -> Self:
         """
         Создаёт экземпляр загрузчика для указанного источника.
-        
+
         Parameters
         ----------
         source : str
             Путь к JSON-файлу.
-        
+
         Returns
         -------
         JsonFileLoader
