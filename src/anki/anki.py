@@ -1,178 +1,304 @@
 class Anki:
-    app_version = '0.0.1'
+    """
+    Основной класс для управления словарём слов и их переводов.
 
-    @staticmethod
-    def normalize_word(word):
-        """
-        Нормализует слово: удаляет пробелы по краям и приводит к
-        нижнему регистру.
+    Класс предоставляет методы для добавления, нормализации и получения слов.
+    Все слова хранятся в нормализованном виде (нижний регистр, без пробелов
+    по краям).
 
-        Параметры:
-            word (str): Слово для нормализации.
+    Parameters
+    ----------
+    words : dict, optional
+        Начальный словарь слов и переводов. Ключи и значения должны быть
+        строками. Если не указан, используется пустой словарь.
 
-        Возвращает:
-            str: Нормализованная строка.
+    Raises
+    ------
+    ValueError
+        Если `words` не является словарём.
+        Если ключи или значения словаря не являются строками.
 
-        Исключения:
-            ValueError: Если переданный аргумент не является строкой.
-        """
-        if not isinstance(word, str):
-            raise ValueError('Параметр `word` должен быть строкой')
-        return word.strip().lower()
+    Examples
+    --------
+    >>> anki = Anki()
+    >>> anki.add_word("Hello", "Привет")
+    >>> anki.get_words()
+    {'hello': 'привет'}
 
+    >>> anki = Anki(words={"Apple": "Яблоко", "Dog": "Собака"})
+    >>> anki.get_words()
+    {'apple': 'яблоко', 'dog': 'собака'}
+    """
     def __init__(self, *, words=None):
-        # Инициализируем пустым словарём, если не передано значение
         if words is None:
             self._words = {}
         else:
-            # Валидация: проверяем, что передан словарь
             if not isinstance(words, dict):
                 raise ValueError(
-                    'Значение параметра `words` должно быть словарём'
+                    'Значение параметра "words" должно быть словарём'
                 )
-
             normalized_words = {}
-            for key, value in words.items():
-                if not isinstance(key, str):
-                    raise ValueError(
-                        f'Ключ {repr(key)} должен быть строкой'
-                    )
-                if not isinstance(value, str):
-                    raise ValueError(
-                        f'Значение {repr(value)} должно быть строкой'
-                    )
-                # Нормализуем ключ и значение
-                normalized_key = self.normalize_word(key)
-                normalized_value = self.normalize_word(value)
-                normalized_words[normalized_key] = normalized_value
+            for word, translation in words.items():
+                if not isinstance(word, str):
+                    raise ValueError('Ключ словаря должен быть строкой')
 
+                if not isinstance(translation, str):
+                    raise ValueError('Значение словаря должно быть строкой')
+
+                normalize_word = self.normalize_word(word)
+                normalize_translation = self.normalize_word(translation)
+                normalized_words[normalize_word] = normalize_translation
             self._words = normalized_words
-
-    def get_words(self):
-        """
-        Возвращает копию словаря слов.
-        
-        Возвращает:
-            dict: Копия словаря вида {"слово": "перевод"}.
-        """
-        import copy
-        return copy.deepcopy(self._words)
-
-    def add_word(self, word, translation):
-        """
-        Добавляет слово и его перевод в словарь words.
-        
-        Параметры:
-            word (str): Слово на иностранном языке.
-            translation (str): Перевод слова.
-        
-        Исключения:
-            ValueError: Если word или translation не являются строками.
-        """
-        if not isinstance(word, str):
-            raise ValueError('Параметр `word` должен быть строкой')
-        if not isinstance(translation, str):
-            raise ValueError('Параметр `translation` должен быть строкой')
-        
-        normalized_word = self.normalize_word(word)
-        normalized_translation = self.normalize_word(translation)
-        
-        self._words[normalized_word] = normalized_translation
 
     def __contains__(self, word):
         """
         Проверяет, содержится ли слово в словаре.
 
-        Параметры:
-            word (str): Слово для проверки.
+        Слово нормализуется (приводится к нижнему регистру и обрезаются
+        пробелы) перед проверкой. Это позволяет искать слова без учёта
+        регистра и лишних пробелов.
 
-        Возвращает:
-            bool: True если слово присутствует в словаре (после нормализации),
-                  False иначе.
+        Parameters
+        ----------
+        word : str
+            Слово для проверки наличия в словаре.
 
-        Исключения:
-            ValueError: Если переданный аргумент не является строкой.
+        Returns
+        -------
+        bool
+            True, если нормализованное слово присутствует в словаре,
+            иначе False.
+
+        Raises
+        ------
+        ValueError
+            Если `word` не является строкой.
+
+        Examples
+        --------
+        >>> anki = Anki(words={"apple": "яблоко"})
+        >>> "apple" in anki
+        True
+        >>> "Apple" in anki
+        True
+        >>> "banana" in anki
+        False
         """
         if not isinstance(word, str):
             raise ValueError('Параметр `word` должен быть строкой')
         normalized_word = self.normalize_word(word)
         return normalized_word in self._words
 
-    def get_random_word(self):
-        """
-        Возвращает случайное слово из словаря.
-
-        Возвращает:
-            str: Случайное слово (ключ) из словаря _words.
-
-        Исключения:
-            ValueError: Если словарь пуст.
-        """
-        import random
-        if not self._words:
-            raise ValueError(
-                'Словарь пуст, невозможно выбрать случайное слово'
-            )
-        return random.choice(list(self._words.keys()))
-
-    def check_translation(self, word, translation):
-        """
-        Проверяет, соответствует ли переданный перевод
-        правильному переводу слова.
-
-        Параметры:
-            word (str): Слово для проверки.
-            translation (str): Предполагаемый перевод.
-
-        Возвращает:
-            bool: True если перевод корректен, False если некорректен.
-
-        Исключения:
-            ValueError: Если слово отсутствует в словаре или
-                       переданные аргументы не являются строками.
-        """
-        if not isinstance(word, str):
-            raise ValueError('Параметр `word` должен быть строкой')
-        if not isinstance(translation, str):
-            raise ValueError('Параметр `translation` должен быть строкой')
-        
-        normalized_word = self.normalize_word(word)
-        if normalized_word not in self._words:
-            raise ValueError(f'Слово "{word}" отсутствует в словаре')
-        
-        normalized_translation = self.normalize_word(translation)
-        correct_translation = self._words[normalized_word]
-        return normalized_translation == correct_translation
-
-    def get_translation(self, word):
-        """
-        Возвращает перевод указанного слова.
-
-        Параметры:
-            word (str): Слово, перевод которого требуется получить.
-
-        Возвращает:
-            str: Перевод слова.
-
-        Исключения:
-            ValueError: Если слово отсутствует в словаре или
-                       переданный аргумент не является строкой.
-        """
-        if not isinstance(word, str):
-            raise ValueError('Параметр `word` должен быть строкой')
-        
-        normalized_word = self.normalize_word(word)
-        if normalized_word not in self._words:
-            raise ValueError(f'Слово "{word}" отсутствует в словаре')
-        
-        return self._words[normalized_word]
-
     def __str__(self):
         """
         Возвращает строковое представление объекта Anki.
 
-        Возвращает:
-            str: Информация о количестве слов в словаре.
+        Представление включает количество слов в словаре.
+
+        Returns
+        -------
+        str
+            Строка в формате "Anki словарь с X слов(ами)".
+
+        Examples
+        --------
+        >>> anki = Anki()
+        >>> str(anki)
+        'Anki словарь с 0 слов(ами)'
+        >>> anki.add_word("hello", "привет")
+        >>> str(anki)
+        'Anki словарь с 1 слов(ами)'
         """
         count = len(self._words)
-        return f"Anki словарь с {count} слов(ами)"
+        return f'Anki словарь с {count} слов(ами)'
+
+    @staticmethod
+    def normalize_word(word):
+        """
+        Нормализует слово: приводит к нижнему регистру и удаляет пробелы
+        по краям.
+
+        Parameters
+        ----------
+        word : str
+            Слово для нормализации.
+
+        Returns
+        -------
+        str
+            Нормализованное слово.
+
+        Raises
+        ------
+        ValueError
+            Если `word` не является строкой.
+
+        Examples
+        --------
+        >>> Anki.normalize_word("  Hello ")
+        'hello'
+        >>> Anki.normalize_word("WORLD")
+        'world'
+        """
+        if not isinstance(word, str):
+            raise ValueError('Слово должно быть строкой')
+        return word.lower().strip()
+
+    def add_word(self, word, translation):
+        """
+        Добавляет слово и его перевод в словарь.
+
+        Оба параметра нормализуются перед сохранением. Если слово уже
+        присутствует в словаре, его перевод будет перезаписан.
+
+        Parameters
+        ----------
+        word : str
+            Слово для добавления.
+        translation : str
+            Перевод слова.
+
+        Raises
+        ------
+        ValueError
+            Если `word` или `translation` не являются строками.
+
+        Examples
+        --------
+        >>> anki = Anki()
+        >>> anki.add_word("Hello", "Привет")
+        >>> anki.get_words()
+        {'hello': 'привет'}
+        """
+        if not isinstance(word, str):
+            raise ValueError('Слово должно быть строкой')
+        if not isinstance(translation, str):
+            raise ValueError('Перевод должен быть строкой')
+        normalize_word = self.normalize_word(word)
+        normalize_translation = self.normalize_word(translation)
+        self._words[normalize_word] = normalize_translation
+
+    def get_words(self):
+        """
+        Возвращает копию словаря всех слов и переводов.
+
+        Возвращается глубокая копия, чтобы предотвратить случайное
+        изменение внутреннего состояния объекта.
+
+        Returns
+        -------
+        dict
+            Копия словаря, где ключи — нормализованные слова,
+            значения — нормализованные переводы.
+
+        Examples
+        --------
+        >>> anki = Anki(words={"Cat": "Кошка"})
+        >>> words = anki.get_words()
+        >>> words
+        {'cat': 'кошка'}
+        >>> words["dog"] = "собака"  # не влияет на внутренний словарь
+        >>> anki.get_words()
+        {'cat': 'кошка'}
+        """
+        import copy
+        return copy.deepcopy(self._words)
+
+    def get_random_word(self):
+        """
+        Возвращает случайное слово из словаря.
+
+        Returns
+        -------
+        str
+            Случайное слово.
+
+        Raises
+        ------
+        ValueError
+            Если словарь пуст.
+
+        Examples
+        --------
+        >>> anki = Anki(words={"Cat": "Кошка"})
+        >>> word = anki.get_random_word()
+        >>> word in anki
+        True
+        """
+        if not self._words:
+            raise ValueError('Словарь пуст')
+        import random
+        return random.choice(list(self._words.keys()))
+
+    def check_translation(self, word, translation):
+        """
+        Проверяет, является ли перевод правильным.
+
+        Parameters
+        ----------
+        word : str
+            Слово, для которого нужно проверить перевод.
+        translation : str
+            Перевод слова.
+
+        Returns
+        -------
+        bool
+            True, если перевод правильный, иначе False.
+
+        Raises
+        ------
+        ValueError
+            Если `word` или `translation` не являются строками.
+            Если слово отсутствует в словаре.
+
+        Examples
+        --------
+        >>> anki = Anki(words={"Cat": "Кошка"})
+        >>> anki.check_translation("Cat", "Кошка")
+        True
+        >>> anki.check_translation("Cat", "Собака")
+        False
+        """
+        if not isinstance(word, str):
+            raise ValueError('Слово должно быть строкой')
+        if not isinstance(translation, str):
+            raise ValueError('Перевод должен быть строкой')
+        normalized_word = self.normalize_word(word)
+        if normalized_word not in self._words:
+            raise ValueError('Слово отсутствует в словаре')
+        normalized_translation = self.normalize_word(translation)
+        return self._words[normalized_word] == normalized_translation
+
+    def get_translation(self, word):
+        """
+        Возвращает перевод слова.
+
+        Parameters
+        ----------
+        word : str
+            Слово, для которого нужно получить перевод.
+
+        Returns
+        -------
+        str
+            Перевод слова.
+
+        Raises
+        ------
+        ValueError
+            Если `word` не является строкой.
+            Если слово отсутствует в словаре.
+
+        Examples
+        --------
+        >>> anki = Anki(words={"Cat": "Кошка"})
+        >>> anki.get_translation("Cat")
+        'Кошка'
+        """
+        if not isinstance(word, str):
+            raise ValueError('Слово должно быть строкой')
+        normalized_word = self.normalize_word(word)
+        if normalized_word not in self._words:
+            raise ValueError('Слово отсутствует в словаре')
+        return self._words[normalized_word]

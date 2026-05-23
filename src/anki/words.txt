@@ -1,6 +1,10 @@
+<<<<<<< HEAD
 кот,cat
 дом,house
 город,city
 стол,table
 стул,chair
 собака,dog
+=======
+яблоко,apple
+>>>>>>> feature/add-ooop-top1l8

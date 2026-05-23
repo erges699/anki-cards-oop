@@ -1,69 +1,112 @@
 from pathlib import Path
 
 
-class TextFileLoader():
-    def __init__(self, *, file_path="./words.txt"):
-        # Преобразуем переданный путь в объект Path
-        self._file_path = Path(file_path)
+class TextFileLoader:
+    """
+    Загрузчик и сохранение слов из/в текстовый файл.
 
-        # Валидация: путь не должен быть директорией
-        if self._file_path.is_dir():
-            raise ValueError(
-                f'Переданный путь {file_path} является директорией, '
-                'а не файлом'
-            )
+    Класс предоставляет методы для чтения слов из текстового файла
+    в формате "слово,перевод" и сохранения словаря обратно в файл.
+
+    Parameters
+    ----------
+    file_path : str or Path, optional
+        Путь к текстовому файлу. По умолчанию "./words.txt".
+
+    Raises
+    ------
+    ValueError
+        Если `file_path` является директорией.
+
+    Examples
+    --------
+    >>> loader = TextFileLoader()
+    >>> words = loader.load_words()
+    >>> isinstance(words, dict)
+    True
+
+    >>> loader = TextFileLoader(file_path="custom_words.txt")
+    >>> loader.save_words({"hello": "привет"})
+    """
+    def __init__(self, *, file_path="./words.txt"):
+        file_path = Path(file_path)
+        if file_path.is_dir():
+            raise ValueError('Значение "file_path" не должно быть директорией')
+        self._file_path = file_path
 
     def load_words(self):
         """
-        Загружает слова из файла, указанного в file_path.
+        Загружает слова из текстового файла.
 
-        Возвращает:
-            dict: Словарь вида {"слово": "перевод"}.
-            Если файл не существует или пуст, возвращает пустой словарь.
+        Файл должен содержать строки в формате "слово,перевод".
+        Строки без запятой или с более чем одной запятой игнорируются.
+        Пустые строки также игнорируются.
+
+        Returns
+        -------
+        dict
+            Словарь, где ключи — слова, значения — переводы.
+            Если файл не существует, возвращается пустой словарь.
+
+        Examples
+        --------
+        >>> loader = TextFileLoader()
+        >>> # Предположим, файл words.txt содержит "hello,привет"
+        >>> words = loader.load_words()
+        >>> words.get("hello")
+        'привет'
         """
-        # Проверяем существование файла
         if not self._file_path.exists():
             return {}
-
         words = {}
         try:
-            with self._file_path.open('r', encoding='utf-8') as f:
-                for line in f:
+            with self._file_path.open("r", encoding="utf-8") as f:
+                lines = f.readlines()
+                for line in lines:
                     line = line.strip()
-                    if not line:  # Пропускаем пустые строки
+                    if not line:
                         continue
-                    # Разделяем по первой запятой
-                    if ',' in line:
-                        word, translation = line.split(',', 1)
-                        words[word.strip()] = translation.strip()
-                    else:
-                        # Если запятой нет, пропускаем строку
+                    # Игнорируем строки без запятой или с лишними запятыми
+                    if line.count(',') != 1:
                         continue
-        except (IOError, OSError):
-            # В случае ошибок чтения возвращаем пустой словарь
+                    word, translation = line.split(',', 1)
+                    words[word.strip()] = translation.strip()
+        except FileNotFoundError:
             return {}
 
         return words
 
     def save_words(self, words):
         """
-        Сохраняет слова в файл, указанный в file_path.
+        Сохраняет словарь слов в текстовый файл.
 
-        Параметры:
-            words (dict): Словарь вида {"слово": "перевод"} для сохранения.
+        Каждая пара "слово,перевод" записывается на отдельной строке.
+        Существующее содержимое файла перезаписывается.
 
-        Исключения:
-            ValueError: Если параметр words не является словарём.
+        Parameters
+        ----------
+        words : dict
+            Словарь, где ключи — слова, значения — переводы.
+
+        Raises
+        ------
+        ValueError
+            Если `words` не является словарём.
+            Если произошла ошибка ввода-вывода при записи.
+
+        Examples
+        --------
+        >>> loader = TextFileLoader(file_path="test.txt")
+        >>> loader.save_words({"cat": "кошка", "dog": "собака"})
+        >>> # Файл test.txt теперь содержит:
+        >>> # cat,кошка
+        >>> # dog,собака
         """
-        # Валидация: проверяем, что передан словарь
         if not isinstance(words, dict):
             raise ValueError('Параметр `words` должен быть словарём')
-
         try:
-            with self._file_path.open('w', encoding='utf-8') as f:
+            with self._file_path.open("w", encoding="utf-8") as f:
                 for word, translation in words.items():
-                    # Записываем в формате "слово,перевод"
                     f.write(f"{word},{translation}\n")
-        except (IOError, OSError) as e:
-            # Пробрасываем исключение дальше
-            raise e
+        except (IOError, OSError):
+            raise ValueError('Не удалось сохранить слова')
