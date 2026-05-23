@@ -1,17 +1,86 @@
+from __future__ import annotations
+
+import argparse
+import contextlib
+# import pathlib
+
 from anki.anki import Anki
-from anki.loader import TextFileLoader
 from anki.ui import TextUI
+from anki.loader import loader_registry, LoaderProtocol
+from typing import Iterator
 
 
-def main():
-    loader = TextFileLoader()
+@contextlib.contextmanager
+def game_context(
+    loader: LoaderProtocol,
+    anki: Anki,
+) -> Iterator[Anki]:
+    """
+    Контекстный менеджер для управления жизненным циклом игры.
 
-    anki = Anki(words=loader.load_words())
+    Принимает экземпляр загрузчика и экземпляр игры Anki.
+    В __enter__ загружает слова и добавляет их в экземпляр Anki.
+    В __exit__ сохраняет слова через вызов save_words загрузчика.
+    Гарантирует сохранение слов даже при возникновении ошибок.
 
-    ui = TextUI(anki)
-    ui.main_loop()
+    Parameters
+    ----------
+    loader : BaseFileLoader or HttpLoader
+        Загрузчик для загрузки и сохранения слов.
+    anki : Anki
+        Экземпляр игры Anki.
 
-    loader.save_words()
+    Yields
+    ------
+    Anki
+        Экземпляр игры Anki с загруженными словами.
+    """
+    try:
+        # Загружаем слова из источника
+        loaded_words = loader.load_words()
+        # Добавляем загруженные слова в экземпляр Anki
+        # (объединяем с существующими словами, чтобы не потерять их)
+        current_words = anki.words
+        current_words.update(loaded_words)
+        anki.words = current_words
+        yield anki
+    finally:
+        # Сохраняем слова, даже если произошла ошибка
+        loader.save_words(anki.words)
+
+
+def get_loader(source: str) -> LoaderProtocol:
+    """
+    Автоматические выбирает конкретную реализацию загрузчика,
+    в зависимости от `source`.
+    """
+    loader_cls = loader_registry.get_loader(source)
+    return loader_cls.from_source(source)
+
+
+def main() -> None:
+    # Создали объект парсера аргументов командной строки.
+    parser = argparse.ArgumentParser(prog="anki")
+
+    # Добавили новый аргумент.
+    parser.add_argument(
+        "--source", default="./words.txt",
+        help="Путь до источника со словами (файл или URL)",
+        metavar="SOURCE_PATH",
+    )
+
+    # Распарсили аргументы командной строки.
+    args = parser.parse_args()
+
+    loader = get_loader(args.source)
+
+    # Создаём экземпляр Anki без слов,
+    # слова будут загружены в контекстном менеджере
+    anki = Anki()
+
+    with game_context(loader, anki):
+        ui = TextUI(anki)
+        ui.main_loop()
 
 
 if __name__ == "__main__":

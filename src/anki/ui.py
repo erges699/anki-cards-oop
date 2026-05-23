@@ -1,4 +1,7 @@
-import textwrap
+from __future__ import annotations
+
+from anki.anki import Anki
+from typing import Callable
 
 
 class TextUI:
@@ -36,16 +39,7 @@ class TextUI:
     """
     STOP_WORD = "стоп"
 
-    MENU = textwrap.dedent("""\
-        Меню:
-        1. Начать игру
-        2. Добавить слова
-        3. Тренировка до первой ошибки
-        4. Вывод всех слов
-        5. Выход
-        """).strip()
-
-    def __init__(self, anki):
+    def __init__(self, anki: 'Anki') -> None:
         """
         Инициализирует текстовый интерфейс с экземпляром игры Anki.
 
@@ -59,11 +53,30 @@ class TextUI:
         ValueError
             Если переданный аргумент `anki` равен None.
         """
+        self._is_running: bool = False
         if anki is None:
             raise ValueError("anki не может быть None")
         self._anki_game = anki
+        # (Функция, описание, условие_видимости)
+        self._command_definition: list[tuple[Callable[..., None], str,
+                                             Callable[..., bool]]] = [
+            (self.start_game, "Начать игру", lambda: len(self._anki_game) > 0),
+            (self.add_words, "Добавить слова", lambda: True),
+            (self.train_until_mistake, "Тренировка до первой ошибки",
+             lambda: len(self._anki_game) > 0),
+            (self.train_until_time_runs_out, "Тренировка на время",
+             lambda: len(self._anki_game) > 0),
+            (self.show_words, "Показать все слова",
+             lambda: len(self._anki_game) > 0),
+            (self.find_translation, "Найти перевод",
+             lambda: len(self._anki_game) > 0),
+            (self.stop, "Выход", lambda: True),
+        ]
 
-    def start_game(self):
+    def stop(self):
+        self._is_running = False
+
+    def start_game(self) -> None:
         """
         Запускает интерактивную игру на проверку знаний.
 
@@ -98,7 +111,139 @@ class TextUI:
                 correct = self._anki_game.get_translation(word)
                 print(f'Неправильно. Правильный перевод: {correct}')
 
-    def add_words(self):
+    def train_until_mistake(self) -> None:
+        """
+        Запускает интерактивную игру на проверку знаний до первой ошибки.
+
+        Использует тренировочную сессию класса Anki (`start_session`).
+        В цикле случайно выбирается слово из словаря, пользователь вводит
+        перевод. Если перевод верный, игра продолжается со следующим словом.
+        Если перевод неверный или пользователь вводит стоп-слово, сессия
+        завершается.
+
+        При активной сессии действует защита от накрутки: нельзя проверить
+        перевод слова, которое не было только что выдано, или повторно
+        проверить то же слово.
+
+        После завершения игры выводится статистика: количество правильных
+        ответов и общее время тренировки.
+
+        Raises
+        ------
+        ValueError
+            Косвенно, если словарь пуст и вызывается `get_random_word()`.
+        """
+        print(
+            f"Удачной игры до первой ошибки! Чтобы завершить игру введите: "
+            f"{self.STOP_WORD}"
+        )
+        training_session = self._anki_game.start_zero_mistakes_training()
+
+        while True:
+            word = training_session.get_random_word()
+            print(f"Переведите слово: {word}")
+
+            translation = input()
+            if translation == self.STOP_WORD:
+                training_session.end_session()
+                user_stat = training_session.get_stat()
+                print(
+                    f"Итоговый счёт: {user_stat['correct_answers']}, "
+                    f"время игры: {user_stat['total_time']:.3f} секунд"
+                )
+                break
+
+            is_correct = training_session.check_translation(word, translation)
+            if is_correct:
+                print("Все верно!")
+            else:
+                user_stat = training_session.get_stat()
+                print(
+                    f"Неправильно, игра окончена, ваш вариант "
+                    f"{repr(translation)} правильный перевод:",
+                    self._anki_game.get_translation(word)
+                )
+                print(
+                    f"Итоговый счёт: {user_stat['correct_answers']}, "
+                    f"время игры: {user_stat['total_time']:.3f} секунд"
+                )
+                break
+
+    def train_until_time_runs_out(self) -> None:
+        """
+        Запускает интерактивную игру на проверку знаний с ограничением
+        по времени.
+
+        Использует тренировочную сессию класса Anki
+        с ограничением по времени.
+        В цикле случайно выбирается слово из словаря, пользователь вводит
+        перевод.
+        Если перевод верный, игра продолжается со следующим словом.
+        Если время истекло, сессия завершается после проверки ответа.
+        Пользователь может завершить игру досрочно, введя стоп-слово.
+
+        После завершения игры выводится статистика: количество правильных
+        ответов и общее время тренировки.
+        """
+        print(
+            f"Удачной игры на время! Чтобы завершить игру досрочно введите: "
+            f"{self.STOP_WORD}"
+        )
+        while True:
+            try:
+                time_limit = float(input("Введите время игры в секундах: "))
+                if time_limit <= 0:
+                    print("Время должно быть положительным числом.")
+                    continue
+                break
+            except ValueError:
+                print("Пожалуйста, введите число.")
+        training_session = self._anki_game.start_time_limited_training(
+            time_limit
+        )
+
+        while True:
+            word = training_session.get_random_word()
+            print(f"Переведите слово: {word}")
+
+            translation = input()
+            if translation == self.STOP_WORD:
+                training_session.end_session()
+                user_stat = training_session.get_stat()
+                print(
+                    f"Итоговый счёт: {user_stat['correct_answers']}, "
+                    f"время игры: {user_stat['total_time']:.3f} секунд"
+                )
+                break
+
+            is_correct = training_session.check_translation(word, translation)
+            if is_correct:
+                print("Все верно!")
+            else:
+                # Ошибка перевода (не время)
+                user_stat = training_session.get_stat()
+                print(
+                    f"Неправильно, ваш вариант {repr(translation)} "
+                    f"правильный перевод:",
+                    self._anki_game.get_translation(word)
+                )
+                print(
+                    f"Итоговый счёт: {user_stat['correct_answers']}, "
+                    f"время игры: {user_stat['total_time']:.3f} секунд"
+                )
+                break
+
+            # Проверяем, активна ли ещё сессия (возможно, время истекло)
+            if not training_session.active:
+                user_stat = training_session.get_stat()
+                print("Время вышло! Игра окончена.")
+                print(
+                    f"Итоговый счёт: {user_stat['correct_answers']}, "
+                    f"время игры: {user_stat['total_time']:.3f} секунд"
+                )
+                break
+
+    def add_words(self) -> None:
         """
         Режим добавления новых слов в словарь.
 
@@ -129,21 +274,42 @@ class TextUI:
             except ValueError as e:
                 print(f'Ошибка: {e}')
 
-    def show_words(self):
+    def show_words(self) -> None:
         """
         Выводит все слова и их переводы из словаря.
 
         Если словарь пуст, выводится только заголовок «Словарь:».
         """
-        words = self._anki_game.get_words()
-        if not words:
-            print('Словарь:')
-            return
+        print(f'Словарь: {len(self._anki_game)}')
 
-        for word, translation in words.items():
+        for word, translation in self._anki_game:
             print(f'{word} - {translation}')
 
-    def main_loop(self):
+    def find_translation(self) -> None:
+        """
+        Находит перевод слова в словаре игры.
+
+        Запрашивает у пользователя слово для поиска.
+        Проверяет наличие слова в словаре игры.
+        Выводит перевод, если слово найдено.
+        Если слова нет в словаре, сообщает об этом.
+        """
+        word = input('Введите слово для поиска: ').strip()
+        if word in self._anki_game:
+            translation = self._anki_game.get_translation(word)
+            print(f'Перевод слова "{word}": {translation}')
+        else:
+            print(f'Слово "{word}" не найдено в словаре.')
+
+    def get_available_commands(self) -> list[tuple[Callable[..., None], str]]:
+        """Возвращает доступные команды для меню."""
+        commands = []
+        for func, description, is_visible in self._command_definition:
+            if is_visible():
+                commands.append((func, description))
+        return commands
+
+    def main_loop(self) -> None:
         """
         Основной цикл интерфейса, отображающий меню и обрабатывающий выбор.
 
@@ -159,20 +325,24 @@ class TextUI:
         -----
         Меню содержит пять пунктов, описанных в атрибуте `MENU`.
         """
-        while True:
-            print(self.MENU)
-            choice = input("> ").strip()
+        self._is_running = True
 
-            if choice == "1":
-                self.start_game()
-            elif choice == "2":
-                self.add_words()
-            elif choice == "3":
-                self.show_words()
-            elif choice == "4":
-                print("\nДанная функциональность ещё не реализована")
-            elif choice == "5":
-                print("\nВыход из программы.")
-                break
+        while self._is_running:
+            menu_choices: list[str] = []
+            commands = {}
+
+            for i, (func, description) in enumerate(
+                self.get_available_commands(), 1
+            ):
+                menu_choices.append(f"{i}. {description}")
+                commands[str(i)] = func
+
+            # Показываем меню
+            print("Меню:\n" + "\n".join(menu_choices))
+            choice = input("Выберите пункт: ")
+
+            if choice in commands:
+                commands[choice]()
             else:
-                print("\nНеверный выбор. Пожалуйста, введите число от 1 до 5.")
+                print("Неверный пункт меню")
+            print()

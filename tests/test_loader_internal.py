@@ -1,8 +1,11 @@
 import importlib
 import tempfile
 import os
+import json
+import io
 
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -13,6 +16,28 @@ def loader_cls():
     importlib.reload(loader)
     return loader.TextFileLoader
 
+
+@pytest.fixture()
+def json_loader_cls():
+    from anki import loader
+    importlib.reload(loader)
+    return loader.JsonFileLoader
+
+
+@pytest.fixture()
+def json_network_loader_cls():
+    from anki import loader
+    importlib.reload(loader)
+    return loader.JsonNetworkLoader
+
+@pytest.fixture
+def json_network_loader_instance(json_network_loader_cls):
+    return json_network_loader_cls("http://127.0.0.1/words")
+
+
+@pytest.fixture()
+def json_loader_instance(json_loader_cls):
+    return json_loader_cls()
 
 @pytest.fixture()
 def empty_temp_file():
@@ -209,4 +234,84 @@ class TestTextFileLoaderClassDocstrings:
         assert "words" in docstring, (
             "В докстринге метода `save_words` класса `TextFileLoader` должен быть описан параметр `words`"
         )
+
+
+class TestJsonFileLoader:
+
+    def test_default_file_path_is_dot_json(self, json_loader_instance):
+
+        assert json_loader_instance.DEFAULT_FILE_PATH == "./words.json", (
+            "Значением атрибута класса `DEFAULT_FILE_PATH` должен быть `\"./words.json\"`"
+        )
+
+    def test_loading_words_from_json(self, json_loader_instance):
+        """Класс `JsonFileLoader` должен загружать слова из файла с json объектом"""
+        words = {"hello": "привет", "world": "мир"}
+
+        file_object = io.StringIO(json.dumps(words, indent=2))
+        file_object.seek(0)
+
+        loaded_words = json_loader_instance._load_from_file(file_object)
+
+        assert words == loaded_words, (
+            "При загрузке слов из json файла был получен неожиданный результат."
+        )
+
+    def test_saving_words_as_json(self, json_loader_instance):
+        """Класс `JsonFileLoader` должен сохранять слова в файла как json объект с форматированием в 2 отступа и utf8 байтами."""
+        words = {"hello": "привет", "world": "мир"}
+
+        file_object = io.StringIO()
+
+        json_loader_instance._save_to_file(words, file_object)
+
+        file_object.seek(0)
+
+        content = file_object.read()
+
+        assert json.dumps(words, indent=2, ensure_ascii=False) == content, (
+            "При сохранении слов в файл json должен записываться в несколько строчек с отступами длинною в 2 пробела."
+            "При этом кириллические символы должны сохраняться в файл как есть."
+        )
+
+
+class TestJsonNetworkLoader:
+
+    def test_initialization(self, json_network_loader_cls):
+        """Проверяет корректность инициализации класса `JsonNetworkLoader`"""
+        loader = json_network_loader_cls("http://127.0.0.1/words")
+
+        assert hasattr(loader, "url"), (
+            "Убедитесь, что у экземпляра `JsonNetworkLoader` есть атрибут `url`"
+        )
+        assert loader.url == "http://127.0.0.1/words", (
+            "Переданное значение `url` должно сохраняться без преобразований"
+        )
+
+    def test_has_methods(self, json_network_loader_cls):
+        """Проверяет, что `JsonNetworkLoader реализует необходимые методы"""
+        assert hasattr(json_network_loader_cls, "load_words"), (
+            "У класса JsonNetworkLoader должен быть реализован метод `load_words()`"
+        )
+        assert hasattr(json_network_loader_cls, "save_words"), (
+            "У класса JsonNetworkLoader должен быть реализован метод `save_words()`"
+        )
+
+    def test_calls_requests_get(self, json_network_loader_instance):
+        """Проверяет, что метод использует модуль requests"""
+        with patch('requests.get') as mock_get:
+            mock_response = MagicMock()
+            mock_response.json.return_value = {"test": "тест"}
+
+            mock_get.return_value = mock_response
+
+            result = json_network_loader_instance.load_words()
+
+            mock_get.assert_called_once_with(json_network_loader_instance.url)
+
+        assert result == {"test": "тест"}
+
+    def test_json_network_loader_save_words_is_stub(self, json_network_loader_instance):
+        """Проверяем, что save_words является заглушкой"""
+        json_network_loader_instance.save_words({"word": "translation"})
 

@@ -94,13 +94,13 @@ def test_integration(tmp_file):
     anki = Anki(words=loaded_words)
 
     # 4. Проверьте, что get_words() возвращает правильные слова.
-    words_from_anki = anki.get_words()
+    words_from_anki = anki.words
     assert words_from_anki == words
 
     # 5. Добавьте новое слово через add_word().
     anki.add_word("apple", "яблоко")
 
-    updated_words = anki.get_words()
+    updated_words = anki.words
     expected_words = {
         "hello": "привет",
         "world": "мир",
